@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { Inter, Instrument_Serif, Silkscreen } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -14,6 +14,13 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
   style: "italic",
   variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+const silkscreen = Silkscreen({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-pixel",
   display: "swap",
 });
 
@@ -42,7 +49,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${instrumentSerif.variable}`}
+      className={`${inter.variable} ${instrumentSerif.variable} ${silkscreen.variable}`}
     >
       <body className="bg-background text-foreground antialiased font-sans transition-colors duration-200">
         <ThemeProvider

@@ -1,16 +1,71 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --keyframes-caret-blink: caret-blink 1.25s ease-out infinite;
+}
+
+@keyframes caret-blink {
+  0%, 70%, 100% {
+    opacity: 1;
+  }
+  20%, 50% {
+    opacity: 0;
+  }
+}
+
 @layer base {
   :root {
     --font-sans: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-serif: var(--font-instrument-serif), "Times New Roman", Times, serif;
 
-    --bg: #000000;
-    --text: #ffffff;
-    --muted: #9a9a9a;
-    --stat: #d8d8d8;
-    --border: rgba(255, 255, 255, 0.16);
-    --border-soft: rgba(255, 255, 255, 0.12);
+    /* Light mode semantic tokens - Crisp high-contrast neutral */
+    --background: oklch(0.985 0 0);
+    --foreground: oklch(0.14 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.14 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.14 0 0);
+    --primary: oklch(0.16 0 0);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.95 0 0);
+    --secondary-foreground: oklch(0.16 0 0);
+    --muted: oklch(0.94 0 0);
+    --muted-foreground: oklch(0.40 0 0);
+    --accent: oklch(0.93 0 0);
+    --accent-foreground: oklch(0.14 0 0);
+    --destructive: oklch(0.55 0.22 27.3);
+    --destructive-foreground: oklch(0.99 0 0);
+    --border: oklch(0.86 0 0);
+    --input: oklch(0.86 0 0);
+    --ring: oklch(0.20 0 0);
+
+    /* Legacy Heyo tokens mapped to light mode */
+    --bg: oklch(0.985 0 0);
+    --text: oklch(0.14 0 0);
+    --stat: oklch(0.35 0 0);
+    --border-soft: rgba(0, 0, 0, 0.1);
 
     /* Default tokens (~1440px) */
     --logo: 15.5px;
@@ -31,6 +86,35 @@
     --hero-gap: 85px;
     --copy-max: 860px;
     --lede-max: 470px;
+  }
+
+  .dark {
+    /* Dark mode semantic tokens - Deep charcoal / pure black */
+    --background: oklch(0.11 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.14 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.14 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.11 0 0);
+    --secondary: oklch(0.20 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.20 0 0);
+    --muted-foreground: oklch(0.68 0 0);
+    --accent: oklch(0.22 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.40 0.14 25.7);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border: oklch(0.22 0 0);
+    --input: oklch(0.22 0 0);
+    --ring: oklch(0.55 0 0);
+
+    /* Legacy Heyo tokens mapped to dark */
+    --bg: oklch(0.11 0 0);
+    --text: oklch(0.985 0 0);
+    --stat: oklch(0.85 0 0);
+    --border-soft: rgba(255, 255, 255, 0.12);
   }
 
   /* Responsive tokens */
@@ -171,10 +255,8 @@
 }
 
 html, body {
-  background: #000000 !important;
-  color: #ffffff;
-  background: var(--bg, #000000);
-  color: var(--text, #ffffff);
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

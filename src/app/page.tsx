@@ -241,6 +241,14 @@ export default function LandingPage() {
           {/* Right: Header CTA & Mobile Burger */}
           <div className="flex items-center gap-3 justify-self-end z-50">
             <Link
+              href="/login"
+              className="appear appear--soft text-xs text-neutral-300 hover:text-white transition px-2 py-1 max-[560px]:hidden"
+              style={{ "--d": "0.30s" } as React.CSSProperties}
+            >
+              Sign In
+            </Link>
+
+            <Link
               href="/dashboard"
               className="appear appear--scale btn-shine"
               style={{ "--d": "0.34s" } as React.CSSProperties}

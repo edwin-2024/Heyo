@@ -32,3 +32,4 @@ yarn-error.log*
 
 # agent / tooling scratch
 .lavish/
+.agents/

@@ -5,20 +5,25 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,border-color,color,transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer active:scale-[0.97]",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Operator & Inbox specific variants
+        filterTab:
+          "px-3 py-1 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted data-[active=true]:bg-neutral-900 data-[active=true]:text-white dark:data-[active=true]:bg-white dark:data-[active=true]:text-neutral-900 data-[active=true]:font-semibold data-[active=true]:shadow-xs",
+        iconRound:
+          "h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground hover:bg-muted border border-border",
         // Liquid-glass / liquid-metal design system variants for Heyo
         solid:
           "relative isolate overflow-hidden font-medium border border-white text-neutral-900 bg-[linear-gradient(180deg,#ffffff_0%,#e7e7e7_48%,#cfcfcf_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95)] hover:bg-[linear-gradient(180deg,#ffffff_0%,#f3f6ff_42%,#d5def2_100%)] hover:border-[#f2f6ff] hover:shadow-[inset_0_1px_0_#fff,0_0_26px_rgba(186,208,255,0.4),0_8px_18px_rgba(255,255,255,0.14)]",
@@ -31,7 +36,8 @@ const buttonVariants = cva(
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        icon: "h-8 w-8 p-0",
+        pill: "h-auto px-3 py-1 text-xs rounded-full",
         btn: "h-[var(--btn-h,40px)] px-4 text-[length:var(--btn,13.5px)] tracking-[-0.02em]",
         heroBtn: "h-[var(--hero-btn-h,42px)] px-[18px] text-[length:var(--btn,13.5px)] tracking-[-0.02em]",
         nav: "h-[var(--nav-h,40px)] px-[18px] rounded-[7px] text-[length:var(--nav,14px)] tracking-[-0.01em]",

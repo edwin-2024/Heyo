@@ -128,15 +128,23 @@ export function DashboardShell({
     }
   };
 
+  // Auto-redirect if session is lost/logged out
+  useEffect(() => {
+    if (!isPending && !clientSession && !initialSession) {
+      window.location.href = "/login";
+    }
+  }, [clientSession, isPending, initialSession]);
+
   const handleSignOut = async () => {
     setIsLoggingOut(true);
     try {
+      localStorage.removeItem("heyo_operator_profile");
       await signOut();
-      router.push("/login");
-    } catch {
-      router.push("/login");
+    } catch (err) {
+      console.error("Sign out error:", err);
     } finally {
       setIsLoggingOut(false);
+      window.location.href = "/login";
     }
   };
 

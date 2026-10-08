@@ -6,16 +6,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { data: rawSession } = await auth.getSession();
-  const session = rawSession?.user
-    ? rawSession
-    : {
-        user: {
-          id: "demo-operator-1",
-          email: "alex@heyo.ai",
-          name: "Alex (Operator)",
-          role: "owner",
-        },
-      };
+  if (!rawSession?.user) {
+    redirect("/login");
+  }
 
-  return <DashboardShell initialSession={session} />;
+  return <DashboardShell initialSession={rawSession} />;
 }

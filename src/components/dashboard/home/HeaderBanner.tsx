@@ -25,7 +25,7 @@ export function HeaderBanner({
             <span className="text-xs text-muted-foreground font-mono">{workspaceName}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
-            Welcome back, {userName || "Alex"} 👋
+            Welcome back, {userName || "Operator"} 👋
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground max-w-2xl leading-relaxed">
             Your autonomous AI agent is actively answering customer queries grounded in your docs.

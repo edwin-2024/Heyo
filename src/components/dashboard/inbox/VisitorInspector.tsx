@@ -15,8 +15,8 @@ interface VisitorInspectorProps {
 export function VisitorInspector({ conversation, onClose }: VisitorInspectorProps) {
   if (!conversation) {
     return (
-      <div className="h-full flex flex-col bg-white dark:bg-neutral-900 border-l border-border select-none">
-        <div className="h-14 px-5 border-b border-border flex items-center justify-between shrink-0">
+      <div className="h-full flex flex-col bg-card/85 backdrop-blur-md border-l border-border select-none">
+        <div className="h-16 px-5 border-b border-border flex items-center justify-between shrink-0">
           <h3 className="text-sm font-bold text-foreground">Details</h3>
           {onClose && (
             <Button
@@ -46,9 +46,9 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
   const { visitor } = conversation;
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-neutral-900 border-l border-border select-none">
+    <div className="h-full flex flex-col bg-card/85 backdrop-blur-md border-l border-border select-none">
       {/* Inspector Header matching mockup 1 (Details + Sidebar toggle) */}
-      <div className="h-14 px-5 border-b border-border flex items-center justify-between shrink-0">
+      <div className="h-16 px-5 border-b border-border flex items-center justify-between shrink-0">
         <h3 className="text-sm font-bold text-foreground">Details</h3>
         {onClose && (
           <Button

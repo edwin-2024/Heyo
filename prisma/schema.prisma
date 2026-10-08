@@ -1,0 +1,92 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DATABASE_URL_UNPOOLED")
+  extensions = [vector]
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  ownerUserId String   @map("owner_user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  widgetSettings WidgetSettings?
+  conversations  Conversation[]
+
+  @@map("workspaces")
+}
+
+model WidgetSettings {
+  workspaceId          String    @id @map("workspace_id")
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brandTitle           String    @default("Heyo Support") @map("brand_title")
+  botDisplayName       String    @default("Heyo AI Agent") @map("bot_display_name")
+  primaryColor         String    @default("#0284c7") @map("primary_color")
+  themeMode            String    @default("system") @map("theme_mode")
+  position             String    @default("right")
+  botAvatarType        String    @default("glass") @map("bot_avatar_type")
+  customAvatarUrl      String?   @default("") @map("custom_avatar_url")
+  welcomeMessage       String    @default("Hey there! 👋 How can our team or AI assistant help you today?") @map("welcome_message")
+  allowHumanEscalation Boolean   @default(true) @map("allow_human_escalation")
+  handoffThreshold     Float     @default(0.65) @map("handoff_threshold")
+  offlineEmailCapture  Boolean   @default(true) @map("offline_email_capture")
+  allowedDomains       String    @default("http://localhost:3000, https://example.com") @map("allowed_domains")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("widget_settings")
+}
+
+enum ConversationStatus {
+  AI_ANSWERING
+  WAITING_HUMAN
+  OPERATOR_ANSWERED
+  RESOLVED
+}
+
+model Conversation {
+  id           String             @id @default(cuid())
+  workspaceId  String             @map("workspace_id")
+  workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  visitorId    String             @map("visitor_id")
+  visitorToken String             @map("visitor_token")
+  status       ConversationStatus @default(AI_ANSWERING)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@index([workspaceId])
+  @@index([visitorToken])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String       // "visitor" | "bot" | "operator" | "system"
+  text           String
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model DocumentChunk {
+  id          String                      @id @default(cuid())
+  workspaceId String                      @map("workspace_id")
+  content     String
+  embedding   Unsupported("vector(384)")?
+  createdAt   DateTime                    @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@map("document_chunks")
+}

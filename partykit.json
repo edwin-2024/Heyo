@@ -1,0 +1,5 @@
+{
+  "name": "heyo-party",
+  "main": "party/index.ts",
+  "compatibilityDate": "2025-03-26"
+}

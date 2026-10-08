@@ -5,11 +5,16 @@ import { auth } from "@/lib/auth/server";
 import { getPresignedAvatarUploadUrl } from "@/server/storage";
 import { broadcastToPartyKit } from "@/server/party";
 
+type AuthSession = {
+  user?: { id?: string; name?: string; email?: string };
+  data?: { user?: { id?: string; name?: string; email?: string } };
+} | null;
+
 export const workspaceRouter = {
   getWorkspace: pub
     .input(z.object({ workspaceId: z.string().optional() }).optional())
     .handler(async ({ input }) => {
-      const session = (await auth.getSession()) as any;
+      const session = (await auth.getSession()) as AuthSession;
       
       const userId = session?.user?.id || session?.data?.user?.id || "demo-operator-1";
       const userName = session?.user?.name || session?.data?.user?.name || "Default";
@@ -70,7 +75,7 @@ export const workspaceRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const session = (await auth.getSession()) as any;
+      const session = (await auth.getSession()) as AuthSession;
       const userId = session?.user?.id || session?.data?.user?.id;
 
       if (process.env.NODE_ENV === "production" && !userId) {
@@ -81,8 +86,10 @@ export const workspaceRouter = {
         const workspace = await prisma.workspace.findUnique({
           where: { id: input.workspaceId },
         });
+        if (!workspace) {
+          throw new Error("Workspace not found");
+        }
         if (
-          workspace &&
           workspace.ownerUserId !== userId &&
           workspace.ownerUserId !== "demo-operator-1" &&
           workspace.ownerUserId !== "system-auto"
@@ -132,7 +139,7 @@ export const workspaceRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const session = (await auth.getSession()) as any;
+      const session = (await auth.getSession()) as AuthSession;
       const userId = session?.user?.id || session?.data?.user?.id;
 
       if (!userId && process.env.NODE_ENV === "production") {
@@ -143,8 +150,10 @@ export const workspaceRouter = {
         const workspace = await prisma.workspace.findUnique({
           where: { id: input.workspaceId },
         });
+        if (!workspace) {
+          throw new Error("Workspace not found");
+        }
         if (
-          workspace &&
           workspace.ownerUserId !== userId &&
           workspace.ownerUserId !== "demo-operator-1" &&
           workspace.ownerUserId !== "system-auto"

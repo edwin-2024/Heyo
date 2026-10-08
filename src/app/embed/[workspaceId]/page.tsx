@@ -7,18 +7,28 @@ function isOriginAllowed(requestOrigin: string, allowedEntries: string[]): boole
   if (allowedEntries.length === 0) return true;
   if (!requestOrigin) return false;
 
+  // Wildcard allows any origin
+  if (allowedEntries.some((e) => e.trim() === "*")) return true;
+
   let reqHost = "";
   try {
-    reqHost = new URL(requestOrigin).host; // e.g. "localhost:3000" or "example.com"
+    reqHost = new URL(requestOrigin).host; // e.g. "localhost:5000" or "example.com"
   } catch {
     reqHost = requestOrigin.replace(/^https?:\/\//, "").split("/")[0];
+  }
+
+  // Local development: allow localhost and 127.0.0.1 on any port so local test sites work effortlessly
+  if (process.env.NODE_ENV !== "production") {
+    if (reqHost.startsWith("localhost") || reqHost.startsWith("127.0.0.1")) {
+      return true;
+    }
   }
 
   return allowedEntries.some((entry) => {
     const clean = entry.trim();
     if (!clean) return false;
 
-    // Direct string match (e.g. "http://localhost:3000")
+    // Direct string match (e.g. "http://localhost:5000")
     if (requestOrigin === clean) return true;
 
     // Host matching
@@ -69,7 +79,7 @@ export default async function EmbedPage({
   // Fallback defaults if not found
   let settings = {
     primaryColor: "#0284c7",
-    allowedDomains: "http://localhost:3000, localhost:3000",
+    allowedDomains: "http://localhost:5000, http://localhost:3000, localhost:5000, localhost:3000",
     brandTitle: "Heyo Support",
     botDisplayName: "Heyo AI Agent",
     botAvatarType: "glass",

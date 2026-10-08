@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex Cloud — High-Performance Cloud Infrastructure (Customer Test Website)</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #111827;
+      --card-border: #1f293d;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --accent: #6366f1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Top installation banner */
+    .install-banner {
+      background: linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%);
+      border-bottom: 1px solid #312e81;
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+    }
+    .install-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .install-banner-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+    }
+    .input-group label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .input-group input {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      outline: none;
+      width: 220px;
+    }
+    button.btn {
+      background: var(--primary);
+      color: #04121e;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.btn:hover { background: var(--primary-hover); color: #fff; }
+    button.btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e5e7eb;
+      border: 1px solid #374151;
+    }
+    button.btn-secondary:hover { background: rgba(255, 255, 255, 0.15); }
+    button.btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    button.btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+
+    /* Customer Site Navigation */
+    header {
+      border-bottom: 1px solid var(--card-border);
+      padding: 20px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-icon {
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 6px;
+    }
+    nav { display: flex; gap: 28px; font-size: 14px; font-weight: 500; }
+    nav a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+    nav a:hover { color: #fff; }
+
+    /* Main Container */
+    main { flex: 1; max-width: 1100px; margin: 0 auto; padding: 60px 24px; }
+    .hero { text-align: center; margin-bottom: 70px; }
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.15;
+      margin-bottom: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 32px;
+    }
+    .hero-actions { display: flex; gap: 14px; justify-content: center; }
+    .hero-actions .cta-primary {
+      background: #fff;
+      color: #0f172a;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      text-decoration: none;
+      font-size: 14px;
+      box-shadow: 0 4px 20px -2px rgba(255, 255, 255, 0.25);
+    }
+    .hero-actions .cta-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    /* Grid cards */
+    .grid { display: grid; grid-cols: 1fr; gap: 24px; margin-bottom: 60px; }
+    @media (min-width: 768px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-2px);
+      border-color: #3b82f6;
+    }
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+    .feature-card h3 { font-size: 17px; margin-bottom: 8px; color: #fff; }
+    .feature-card p { font-size: 14px; color: var(--text-muted); }
+
+    /* Interactive Snippet Tester Box */
+    .snippet-test-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+    .snippet-test-card h3 {
+      font-size: 16px;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .snippet-test-card p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .snippet-textarea {
+      width: 100%;
+      height: 90px;
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      color: #f1f5f9;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      outline: none;
+      resize: vertical;
+      margin-bottom: 12px;
+    }
+    .snippet-textarea:focus { border-color: #38bdf8; }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 32px 48px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <!-- Standalone Widget Test Bar -->
+  <div class="install-banner">
+    <div class="install-banner-left">
+      <span class="badge">External Host Site</span>
+      <span style="font-weight: 600; color: #e0e7ff;">Apex Cloud (Simulated Customer Application)</span>
+      <span style="color: #64748b;">·</span>
+      <span style="color: #94a3b8; font-size: 12px;">Testing Heyo Widget Embed Isolation</span>
+    </div>
+
+    <div class="install-banner-right">
+      <div class="input-group">
+        <label for="workspaceInput">Workspace ID:</label>
+        <input type="text" id="workspaceInput" placeholder="Paste workspaceId..." />
+      </div>
+      <button class="btn" id="applyWsBtn">Install Snippet</button>
+      <button class="btn btn-secondary" id="openInboxBtn" title="Open Heyo Dashboard Inbox">Operator Inbox ↗</button>
+      <button class="btn btn-danger" id="clearStorageBtn" title="Clear local visitor token to simulate fresh visitor">Reset Visitor</button>
+    </div>
+  </div>
+
+  <!-- Customer Website Content -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <span>Apex Cloud</span>
+    </div>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#infrastructure">Infrastructure</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#docs">API Docs</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Hyper-Scale Cloud Compute &amp; Database Runtime</h1>
+      <p>
+        Deploy latency-critical workloads, serverless functions, and vector indexes across 35 global edge regions with zero cold starts.
+      </p>
+      <div class="hero-actions">
+        <a href="#get-started" class="cta-primary">Start Building Free</a>
+        <a href="#docs" class="cta-secondary">View Documentation</a>
+      </div>
+    </section>
+
+    <!-- Paste Raw HTML Snippet Box for easy copy-paste testing -->
+    <div class="snippet-test-card">
+      <h3>📋 Direct Snippet Paste Test</h3>
+      <p>
+        Copy the embed script from your Heyo Dashboard (Settings &gt; Embed Code), paste it here, and click <strong>Apply Snippet</strong> to install it immediately on this external host website without reloading.
+      </p>
+      <textarea id="rawSnippetInput" class="snippet-textarea" placeholder="&lt;script src=&quot;http://localhost:3000/widget.js&quot; data-workspace=&quot;...&quot; data-position=&quot;right&quot; async&gt;&lt;/script&gt;"></textarea>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn" id="installSnippetTextBtn">Install Pasted Snippet</button>
+        <span id="installStatusText" style="font-size: 12px; color: #10b981; font-weight: 500;"></span>
+      </div>
+    </div>
+
+    <section class="grid" id="features">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Zero Cold Starts</h3>
+        <p>V8 isolates spin up in under 5ms worldwide, ensuring instantaneous response times for API gateways and microservices.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>Enterprise Guardrails</h3>
+        <p>Dual-layer intent classification and rate limiting protect backend resources from unauthorized scraping and prompt injection.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <h3>PartyKit Edge WebSockets</h3>
+        <p>Bi-directional real-time rooms synchronize live chats, typing indicators, and session states across multiple browser tabs.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 Apex Cloud Technologies, Inc. All rights reserved. Heyo Chat Widget is embedded via sandboxed iframe protocol.</p>
+  </footer>
+
+  <!-- Script to manage dynamic widget installation for testing -->
+  <script>
+    (function() {
+      var HEYO_HOST = window.location.port === "3000" ? window.location.origin : "http://localhost:3000";
+      var urlParams = new URLSearchParams(window.location.search);
+      var currentWsId = urlParams.get("workspaceId") || localStorage.getItem("apex_test_workspace_id") || "cmuzm6fa50000ux38738oczcj";
+
+      var wsInput = document.getElementById("workspaceInput");
+      var rawSnippetInput = document.getElementById("rawSnippetInput");
+      var statusText = document.getElementById("installStatusText");
+
+      wsInput.value = currentWsId;
+
+      function installWidget(wsId, position) {
+        if (!wsId) return;
+        position = position || "right";
+        currentWsId = wsId;
+        localStorage.setItem("apex_test_workspace_id", wsId);
+        wsInput.value = wsId;
+
+        // Remove previous widget script and container if present
+        var oldScript = document.getElementById("heyo-active-widget-script");
+        if (oldScript) oldScript.remove();
+
+        var oldContainer = document.getElementById("heyo-widget-container");
+        if (oldContainer) oldContainer.remove();
+
+        // Inject widget script exactly as a real customer website does
+        var script = document.createElement("script");
+        script.id = "heyo-active-widget-script";
+        script.src = HEYO_HOST + "/widget.js";
+        script.setAttribute("data-workspace", wsId);
+        script.setAttribute("data-position", position);
+        script.setAttribute("data-host", HEYO_HOST);
+        script.async = true;
+
+        document.body.appendChild(script);
+
+        if (statusText) {
+          statusText.innerText = "✓ Widget installed for workspace: " + wsId;
+          setTimeout(function() { statusText.innerText = ""; }, 4000);
+        }
+      }
+
+      // Initial installation on page load
+      installWidget(currentWsId);
+
+      document.getElementById("applyWsBtn").addEventListener("click", function() {
+        var nextId = wsInput.value.trim();
+        if (nextId) {
+          var url = new URL(window.location);
+          url.searchParams.set("workspaceId", nextId);
+          window.history.pushState({}, "", url);
+          installWidget(nextId);
+        }
+      });
+
+      document.getElementById("installSnippetTextBtn").addEventListener("click", function() {
+        var text = rawSnippetInput.value.trim();
+        if (!text) return;
+
+        // Match data-workspace from snippet
+        var matchWs = text.match(/data-workspace=["']([^"']+)["']/);
+        var matchPos = text.match(/data-position=["']([^"']+)["']/);
+
+        if (matchWs && matchWs[1]) {
+          var wsId = matchWs[1];
+          var pos = (matchPos && matchPos[1]) || "right";
+          var url = new URL(window.location);
+          url.searchParams.set("workspaceId", wsId);
+          window.history.pushState({}, "", url);
+          installWidget(wsId, pos);
+        } else {
+          alert("Could not find data-workspace in the pasted snippet. Please make sure you copied the full <script> tag.");
+        }
+      });
+
+      document.getElementById("openInboxBtn").addEventListener("click", function() {
+        window.open(HEYO_HOST + "/dashboard/inbox", "_blank");
+      });
+
+      document.getElementById("clearStorageBtn").addEventListener("click", function() {
+        // Clear workspace specific visitor token
+        var key = "heyo_visitor_token_" + encodeURIComponent(currentWsId);
+        localStorage.removeItem(key);
+        localStorage.removeItem("heyo_visitor_token"); // legacy fallback
+        alert("Visitor token cleared for workspace (" + currentWsId + "). The next chat interaction will be treated as a brand-new visitor.");
+        window.location.reload();
+      });
+    })();
+  </script>
+</body>
+</html>

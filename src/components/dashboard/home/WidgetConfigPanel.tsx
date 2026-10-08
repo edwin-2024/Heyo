@@ -736,12 +736,13 @@ export function WidgetConfigPanel({ settings, onChange }: WidgetConfigPanelProps
                     className="h-6 px-2 text-[11px] font-medium text-sky-400 hover:text-sky-300 hover:bg-neutral-800/80 cursor-pointer gap-1"
                   >
                     <a
-                      href={`/demo?workspaceId=${settings.workspaceId}`}
+                      href={`http://localhost:5000?workspaceId=${settings.workspaceId}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      title="Open external customer test website on port 5000"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      <span>Test on Demo Site</span>
+                      <span>Open External Test Site</span>
                     </a>
                   </Button>
 

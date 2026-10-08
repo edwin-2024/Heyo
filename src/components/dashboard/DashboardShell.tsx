@@ -348,38 +348,6 @@ export function DashboardShell({
               </button>
             )}
 
-            {/* 3. Demo Website (Interactive Sandbox) */}
-            {isCollapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    href="/demo"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-all cursor-pointer relative group"
-                    aria-label="Demo Website"
-                  >
-                    <ExternalLink className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent side="right">Demo Website (Test Chat)</TooltipContent>
-              </Tooltip>
-            ) : (
-              <a
-                href="/demo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 active:scale-[0.98] transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ExternalLink className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
-                  <span>Demo Website</span>
-                </div>
-                <span className="text-[10px] font-mono uppercase bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded font-medium">
-                  Test
-                </span>
-              </a>
-            )}
           </nav>
 
           {/* Real-time Connection Indicator */}

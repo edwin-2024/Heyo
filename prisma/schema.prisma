@@ -37,7 +37,7 @@ model WidgetSettings {
   allowHumanEscalation Boolean   @default(true) @map("allow_human_escalation")
   handoffThreshold     Float     @default(0.65) @map("handoff_threshold")
   offlineEmailCapture  Boolean   @default(true) @map("offline_email_capture")
-  allowedDomains       String    @default("http://localhost:3000, https://example.com") @map("allowed_domains")
+  allowedDomains       String    @default("http://localhost:5000, http://localhost:3000, https://example.com") @map("allowed_domains")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
   @@map("widget_settings")

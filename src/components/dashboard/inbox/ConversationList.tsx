@@ -271,9 +271,9 @@ export function ConversationList({
                 </p>
               </div>
               <Button asChild size="sm" variant="outline" className="text-xs gap-1.5 shadow-xs cursor-pointer">
-                <a href="/demo" target="_blank" rel="noopener noreferrer">
+                <a href="http://localhost:5000" target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-3.5 w-3.5 text-primary" />
-                  <span>Test on Demo Website</span>
+                  <span>Open External Test Site</span>
                 </a>
               </Button>
             </div>

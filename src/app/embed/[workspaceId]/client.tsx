@@ -41,7 +41,8 @@ export function EmbedClient({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const conversationId = visitorToken;
+  // Derive deterministic, workspace-scoped conversation ID
+  const conversationId = `conv_${workspaceId}_${visitorToken}`;
 
   // Sync settings when props update
   useEffect(() => {

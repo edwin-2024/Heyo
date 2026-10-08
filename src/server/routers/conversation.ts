@@ -31,6 +31,10 @@ export const conversationRouter = {
     .handler(async ({ input }) => {
       const { workspaceId, conversationId, visitorToken, sender, text, metadata } = input;
       const vToken = visitorToken || conversationId;
+      // Derive workspace-scoped deterministic conversation ID
+      const effectiveConvId = conversationId.startsWith(`conv_${workspaceId}_`)
+        ? conversationId
+        : `conv_${workspaceId}_${vToken}`;
 
       // 1. Ensure workspace exists via upsert (race-safe)
       await prisma.workspace.upsert({
@@ -49,16 +53,21 @@ export const conversationRouter = {
       // 2. Ensure conversation exists via upsert (race-safe)
       const initialStatus = sender === "operator" ? "OPERATOR_ANSWERED" : "AI_ANSWERING";
       const conversation = await prisma.conversation.upsert({
-        where: { id: conversationId },
+        where: { id: effectiveConvId },
         update: {},
         create: {
-          id: conversationId,
+          id: effectiveConvId,
           workspaceId,
           visitorId: vToken,
           visitorToken: vToken,
           status: initialStatus,
         },
       });
+
+      // Strict tenant boundary verification
+      if (conversation.workspaceId !== workspaceId) {
+        throw new Error("Forbidden: Cross-workspace conversation collision");
+      }
 
       // 3. Determine status transition
       let statusUpdate: "OPERATOR_ANSWERED" | "AI_ANSWERING" | undefined;
@@ -72,14 +81,14 @@ export const conversationRouter = {
       const [message, updatedConv] = await prisma.$transaction([
         prisma.message.create({
           data: {
-            conversationId,
+            conversationId: effectiveConvId,
             sender,
             text,
             metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : undefined,
           },
         }),
         prisma.conversation.update({
-          where: { id: conversationId },
+          where: { id: effectiveConvId },
           data: {
             updatedAt: new Date(),
             ...(statusUpdate ? { status: statusUpdate } : {}),
@@ -89,12 +98,12 @@ export const conversationRouter = {
       const nextStatus = updatedConv.status;
 
       // 4. Server-first broadcast to PartyKit Edge room
-      const chatRoomId = `room_${workspaceId}_${conversationId}`;
+      const chatRoomId = `room_${workspaceId}_${effectiveConvId}`;
       const inboxRoomId = `inbox_${workspaceId}`;
 
       const broadcastPayload = {
         id: message.id,
-        conversationId,
+        conversationId: effectiveConvId,
         sender: message.sender,
         text: message.text,
         createdAt: message.createdAt.toISOString(),
@@ -110,7 +119,7 @@ export const conversationRouter = {
       await broadcastToPartyKit(inboxRoomId, {
         type: "conversation:updated",
         payload: {
-          conversationId,
+          conversationId: effectiveConvId,
           status: nextStatus,
           lastMessage: broadcastPayload,
         },
@@ -127,8 +136,20 @@ export const conversationRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: input.conversationId },
+      // Derive workspace-scoped ID if raw visitor token was passed
+      const effectiveConvId = input.conversationId.startsWith(`conv_${input.workspaceId}_`)
+        ? input.conversationId
+        : `conv_${input.workspaceId}_${input.conversationId}`;
+
+      // Query with strict tenant boundary enforcement
+      const conversation = await prisma.conversation.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          OR: [
+            { id: input.conversationId },
+            { id: effectiveConvId },
+          ],
+        },
         include: {
           messages: {
             orderBy: { createdAt: "asc" },

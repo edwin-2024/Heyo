@@ -4,8 +4,21 @@ import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useSession } from "@/lib/auth/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { ShieldCheck, Cpu, Layers, DollarSign, CheckCircle2, ArrowRight } from "lucide-react";
+
+type ModalType = "benefits" | "guardrails" | "architecture" | "pricing" | null;
 
 export default function LandingPage() {
+  const { data: session, isPending } = useSession();
+  const [modalType, setModalType] = useState<ModalType>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Manage body class for menu open state
@@ -56,7 +69,6 @@ export default function LandingPage() {
       el.addEventListener("animationend", onAnimEnd, { once: true });
     });
 
-    // JS Fallback after 2 requestAnimationFrames
     const rAfId = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         let hasRunning = false;
@@ -80,7 +92,8 @@ export default function LandingPage() {
     };
   }, []);
 
-  const closeMenu = useCallback(() => {
+  const openPill = useCallback((type: ModalType) => {
+    setModalType(type);
     setMenuOpen(false);
   }, []);
 
@@ -116,21 +129,20 @@ export default function LandingPage() {
               ? "opacity-100 backdrop-blur-[24px] pointer-events-auto"
               : "opacity-0 pointer-events-none"
           }`}
-          onClick={closeMenu}
+          onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />
 
-        {/* Header - 3 Column Grid */}
+        {/* Header - 3 Column Balanced Grid */}
         <header
           className="header relative z-50 grid grid-cols-[1fr_auto_1fr] max-[900px]:grid-cols-[1fr_auto_auto] items-center"
           style={{
-            padding:
-              "var(--header-y) var(--header-x) 10px",
+            padding: "var(--header-y) var(--header-x) 10px",
           }}
         >
           {/* Left: Brand Logo */}
           <Link
-            href="#top"
+            href="/"
             className="logo appear appear--scale inline-flex items-center gap-[9px] justify-self-start font-semibold text-white tracking-[-0.03em] select-none"
             style={
               {
@@ -140,7 +152,6 @@ export default function LandingPage() {
             }
             aria-label="Heyo"
           >
-            {/* Mark SVG 22x22 */}
             <svg
               width="22"
               height="22"
@@ -177,10 +188,10 @@ export default function LandingPage() {
               min-[901px]:flex min-[901px]:gap-2
             `}
           >
-            <Link
-              href="#benefits"
-              onClick={closeMenu}
-              className="appear appear--scale nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px]"
+            <button
+              type="button"
+              onClick={() => openPill("benefits")}
+              className="appear appear--scale nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.16s" } as React.CSSProperties}
             >
               <Button
@@ -190,12 +201,12 @@ export default function LandingPage() {
               >
                 Benefits
               </Button>
-            </Link>
+            </button>
 
-            <Link
-              href="#guardrails"
-              onClick={closeMenu}
-              className="appear appear--soft nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px]"
+            <button
+              type="button"
+              onClick={() => openPill("guardrails")}
+              className="appear appear--soft nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.28s" } as React.CSSProperties}
             >
               <Button
@@ -205,12 +216,12 @@ export default function LandingPage() {
               >
                 Guardrails & RAG
               </Button>
-            </Link>
+            </button>
 
-            <Link
-              href="#architecture"
-              onClick={closeMenu}
-              className="appear appear--scale nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px]"
+            <button
+              type="button"
+              onClick={() => openPill("architecture")}
+              className="appear appear--scale nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.40s" } as React.CSSProperties}
             >
               <Button
@@ -220,12 +231,12 @@ export default function LandingPage() {
               >
                 Architecture
               </Button>
-            </Link>
+            </button>
 
-            <Link
-              href="#pricing"
-              onClick={closeMenu}
-              className="appear appear--soft nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px]"
+            <button
+              type="button"
+              onClick={() => openPill("pricing")}
+              className="appear appear--soft nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.52s" } as React.CSSProperties}
             >
               <Button
@@ -235,28 +246,32 @@ export default function LandingPage() {
               >
                 Pricing
               </Button>
-            </Link>
+            </button>
           </nav>
 
-          {/* Right: Header CTA & Mobile Burger */}
-          <div className="flex items-center gap-3 justify-self-end z-50">
-            <Link
-              href="/login"
-              className="appear appear--soft text-xs text-neutral-300 hover:text-white transition px-2 py-1 max-[560px]:hidden"
-              style={{ "--d": "0.30s" } as React.CSSProperties}
-            >
-              Sign In
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="appear appear--scale btn-shine"
-              style={{ "--d": "0.34s" } as React.CSSProperties}
-            >
-              <Button variant="solid" size="btn">
-                Launch Workspace
-              </Button>
-            </Link>
+          {/* Right: Auth Action & Mobile Burger */}
+          <div className="flex items-center gap-3 justify-self-end z-50 min-h-[40px]">
+            {isPending ? null : session ? (
+              <Link
+                href="/dashboard"
+                className="appear appear--scale btn-shine"
+                style={{ "--d": "0.34s" } as React.CSSProperties}
+              >
+                <Button variant="solid" size="btn">
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="appear appear--scale btn-shine"
+                style={{ "--d": "0.34s" } as React.CSSProperties}
+              >
+                <Button variant="solid" size="btn">
+                  Sign In
+                </Button>
+              </Link>
+            )}
 
             {/* Mobile Hamburger Button */}
             <button
@@ -286,13 +301,13 @@ export default function LandingPage() {
           </div>
         </header>
 
-        {/* Hero Section (Bottom-centered) */}
+        {/* Hero Section - Optically Centered in Mid Viewport */}
         <main
           id="top"
-          className="hero flex items-end justify-center min-h-0 px-6 max-[900px]:px-5"
+          className="hero flex items-center justify-center min-h-0 px-6 max-[900px]:px-5 my-auto"
           style={{
-            paddingBottom: "var(--hero-gap)",
-            paddingTop: "8px",
+            paddingTop: "16px",
+            paddingBottom: "36px",
           }}
         >
           <div
@@ -304,14 +319,13 @@ export default function LandingPage() {
               className="appear appear--pop inline-block"
               style={{
                 "--d": "0.22s",
-                marginBottom: "22px",
+                marginBottom: "20px",
               } as React.CSSProperties}
             >
               <Badge
                 variant="liquidBadge"
                 className="gap-2 px-[15px] py-[9px] text-[length:var(--badge)] cursor-default select-none shadow-[0_0_15px_rgba(0,0,0,0.5)]"
               >
-                {/* Sparkle SVG */}
                 <svg
                   width="18"
                   height="20"
@@ -365,38 +379,50 @@ export default function LandingPage() {
               and instantaneous PartyKit operator handoffs.
             </p>
 
-            {/* Hero CTAs */}
+            {/* Hero CTAs - Perfectly balanced pair */}
             <div
-              className="hero-actions flex flex-wrap max-[560px]:flex-col items-center justify-center gap-[10px] w-full"
-              style={{ marginTop: "26px" }}
+              className="hero-actions flex flex-wrap max-[560px]:flex-col items-center justify-center gap-[12px] w-full min-h-[44px]"
+              style={{ marginTop: "28px" }}
             >
-              <Link
-                href="/dashboard"
-                className="appear appear--btn btn-shine max-[560px]:w-full"
-                style={{ "--d": "0.96s" } as React.CSSProperties}
-              >
-                <Button
-                  variant="solid"
-                  size="heroBtn"
-                  className="max-[560px]:w-full"
+              {isPending ? null : session ? (
+                <Link
+                  href="/dashboard"
+                  className="appear appear--btn btn-shine max-[560px]:w-full"
+                  style={{ "--d": "0.96s" } as React.CSSProperties}
                 >
-                  Start for Free
-                </Button>
-              </Link>
+                  <Button
+                    variant="solid"
+                    size="heroBtn"
+                    className="max-[560px]:w-full"
+                  >
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="appear appear--btn btn-shine max-[560px]:w-full"
+                  style={{ "--d": "0.96s" } as React.CSSProperties}
+                >
+                  <Button
+                    variant="solid"
+                    size="heroBtn"
+                    className="max-[560px]:w-full"
+                  >
+                    Start for Free
+                  </Button>
+                </Link>
+              )}
 
-              <Link
-                href="#demo"
-                className="appear appear--side btn-shine max-[560px]:w-full"
-                style={{ "--d": "1.10s" } as React.CSSProperties}
+              <Button
+                variant="liquidGhost"
+                size="heroBtn"
+                onClick={() => setModalType("architecture")}
+                className="appear appear--side btn-shine max-[560px]:w-full cursor-pointer"
+                style={{ "--d": "1.08s" } as React.CSSProperties}
               >
-                <Button
-                  variant="liquidGhost"
-                  size="heroBtn"
-                  className="max-[560px]:w-full"
-                >
-                  See it in action
-                </Button>
-              </Link>
+                Explore Architecture
+              </Button>
             </div>
           </div>
         </main>
@@ -413,7 +439,6 @@ export default function LandingPage() {
             className="stat appear appear--stat inline-flex items-center gap-[14px] text-[length:var(--stat-size)] tracking-[-0.015em] whitespace-nowrap max-[900px]:whitespace-normal select-none"
             style={{ "--d": "1.12s" } as React.CSSProperties}
           >
-            {/* Dual-pill / workflow SVG */}
             <svg
               width="20"
               height="20"
@@ -464,7 +489,6 @@ export default function LandingPage() {
             className="stat appear appear--stat inline-flex items-center gap-[14px] text-[length:var(--stat-size)] tracking-[-0.015em] whitespace-nowrap max-[900px]:whitespace-normal select-none"
             style={{ "--d": "1.28s" } as React.CSSProperties}
           >
-            {/* Download / Acceleration tile */}
             <svg
               width="20"
               height="20"
@@ -496,7 +520,6 @@ export default function LandingPage() {
             className="stat appear appear--stat inline-flex items-center gap-[14px] text-[length:var(--stat-size)] tracking-[-0.015em] whitespace-nowrap max-[900px]:whitespace-normal select-none"
             style={{ "--d": "1.44s" } as React.CSSProperties}
           >
-            {/* 3 Avatars SVG (38x21) */}
             <svg
               width="38"
               height="21"
@@ -504,7 +527,6 @@ export default function LandingPage() {
               className="w-[38px] h-[21px] shrink-0"
               aria-hidden="true"
             >
-              {/* Avatar 1: Dark with pale face & ears */}
               <circle cx="10.2" cy="11" r="9.2" fill="#2b2b2b" />
               <ellipse cx="10.2" cy="12.1" rx="4.15" ry="3.7" fill="#f4f4f4" />
               <polygon points="7.2,5.2 8.8,8.2 6.5,8.2" fill="#2b2b2b" />
@@ -512,7 +534,6 @@ export default function LandingPage() {
               <circle cx="8.9" cy="11.4" r="0.7" fill="#1a1a1a" />
               <circle cx="11.5" cy="11.4" r="0.7" fill="#1a1a1a" />
 
-              {/* Avatar 2: White with smile */}
               <circle cx="20.2" cy="11" r="9.2" fill="#ffffff" />
               <circle cx="17.7" cy="9.6" r="1.7" fill="#111111" />
               <circle cx="22.7" cy="9.6" r="1.7" fill="#111111" />
@@ -525,7 +546,6 @@ export default function LandingPage() {
                 fill="none"
               />
 
-              {/* Avatar 3: Orange with letter 'e' */}
               <circle cx="30.2" cy="11" r="9.2" fill="#f26b1d" />
               <text
                 x="30.2"
@@ -543,6 +563,183 @@ export default function LandingPage() {
           </div>
         </footer>
       </div>
+
+      {/* Interactive Feature & Architecture Modals */}
+      <Dialog open={modalType !== null} onOpenChange={(open) => !open && setModalType(null)}>
+        <DialogContent className="max-w-xl bg-card/95 border-border backdrop-blur-2xl p-6 sm:p-7 text-foreground">
+          {modalType === "benefits" && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wider mb-1">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Deflection & Conversion</span>
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-medium tracking-tight">
+                  High-Impact Customer Support
+                </DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Automate tier-1 support while providing a white-glove human escalation path.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 mt-4 text-xs sm:text-sm">
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium text-foreground">≥55% AI Deflection Rate:</span>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Grounds answers directly on your ingested product documentation without hallucinations or token waste.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium text-foreground">&lt;800ms First-Response Streaming:</span>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Sub-second time-to-first-token inference powered by Groq LPUs for a snappy conversational feel.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium text-foreground">Multi-Tab Session Sync:</span>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Visitors can switch pages or open new browser tabs while keeping chat context synchronized in real-time.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {modalType === "guardrails" && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wider mb-1">
+                  <Cpu className="h-4 w-4" />
+                  <span>Dual-Guardrail Architecture</span>
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-medium tracking-tight">
+                  Step 3 Intent Classification Gate
+                </DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Stop prompt injection, off-topic homework queries, and jailbreaks before spending vector search tokens.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 mt-4 text-xs sm:text-sm">
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <div className="flex items-center gap-2 font-medium text-foreground mb-1">
+                    <span className="h-2 w-2 rounded-full bg-blue-500" />
+                    <span>Turn 1–3 Conversational Classifier</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Evaluates the last 3 turns via Groq <code className="text-foreground">llama-3.1-8b-instant</code>. Declines irrelevant queries with &gt;98% precision before entering the retrieval pipeline.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <div className="flex items-center gap-2 font-medium text-foreground mb-1">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span>Dual Confidence Handoff Trigger</span>
+                  </div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Automatically transitions to <code className="text-foreground">WAITING_HUMAN</code> if top-chunk cosine similarity falls below 0.65 or if the synthesis LLM outputs an escalation token.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {modalType === "architecture" && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wider mb-1">
+                  <Layers className="h-4 w-4" />
+                  <span>Engineering Stack</span>
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-medium tracking-tight">
+                  Server-First Real-Time Pipeline
+                </DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Engineered with zero compromises on type-safety, latency, or multi-tenant security.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4 text-xs">
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <span className="font-semibold text-foreground block mb-0.5">Next.js 16 + Turbopack</span>
+                  <span className="text-muted-foreground">App Router single authority for DB writes and oRPC type-safe procedures.</span>
+                </div>
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <span className="font-semibold text-foreground block mb-0.5">Neon Postgres + pgvector</span>
+                  <span className="text-muted-foreground">Serverless persistence with 384-dimensional semantic chunk embeddings.</span>
+                </div>
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <span className="font-semibold text-foreground block mb-0.5">PartyKit Edge Transport</span>
+                  <span className="text-muted-foreground">WebSocket rooms with hibernation for instant message broadcast & typing state.</span>
+                </div>
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50">
+                  <span className="font-semibold text-foreground block mb-0.5">Neon Object Storage (S3)</span>
+                  <span className="text-muted-foreground">Direct browser presigned PUT uploads for avatars and knowledge base files.</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {modalType === "pricing" && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wider mb-1">
+                  <DollarSign className="h-4 w-4" />
+                  <span>Transparent Model</span>
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-medium tracking-tight">
+                  Built on Open Cloud Primitives
+                </DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  No artificial paywalls or inflated token markups.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 mt-4 text-xs sm:text-sm">
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50 flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium text-foreground">Free Tier Embeddings:</span>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Vector search runs entirely on free-tier 384d models without recurring SaaS licensing fees.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-accent/40 border border-border/50 flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium text-foreground">Zero Off-Topic Token Burn:</span>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      Spam and abusive inputs are cut off before running expensive synthesis prompts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="mt-4 pt-3 border-t border-border flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModalType(null)}
+              className="text-xs cursor-pointer"
+            >
+              Close
+            </Button>
+            <Link href={session ? "/dashboard" : "/login"} onClick={() => setModalType(null)}>
+              <Button size="sm" className="text-xs gap-1.5 cursor-pointer">
+                <span>{session ? "Open Dashboard" : "Get Started"}</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -31,10 +31,11 @@ function isOriginAllowed(requestOrigin: string, allowedEntries: string[]): boole
 
     if (reqHost.toLowerCase() === entryHost.toLowerCase()) return true;
 
-    // Wildcard subdomain matching (e.g. "*.example.com" or "example.com")
+    // Wildcard subdomain matching (e.g. "*.example.com")
     if (entryHost.startsWith("*.")) {
       const root = entryHost.slice(2).toLowerCase();
-      return reqHost.toLowerCase().endsWith(root);
+      const lReq = reqHost.toLowerCase();
+      return lReq === root || lReq.endsWith("." + root);
     }
 
     return false;

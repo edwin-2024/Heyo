@@ -39,6 +39,7 @@ export function EmbedClient({
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const conversationId = visitorToken;
 
@@ -123,9 +124,11 @@ export function EmbedClient({
           });
         } else if (data.type === "typing") {
           if (data.payload?.sender === "operator" || !data.payload?.sender) {
+            if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
             setPartnerTyping(true);
-            const timer = setTimeout(() => setPartnerTyping(false), 3000);
-            return () => clearTimeout(timer);
+            typingTimerRef.current = setTimeout(() => {
+              setPartnerTyping(false);
+            }, 3000);
           }
         }
       } catch (e) {

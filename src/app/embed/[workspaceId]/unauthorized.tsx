@@ -15,7 +15,7 @@ export function UnauthorizedOrigin({
   const toggle = () => {
     const next = !expanded;
     setExpanded(next);
-    window.parent.postMessage({ type: "heyo:resize", expanded: next }, "*");
+    window.parent.postMessage({ type: "heyo:resize", expanded: next }, clientOrigin || "*");
   };
 
   const iframeStyles = (

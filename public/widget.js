@@ -64,6 +64,7 @@
       var isMobile = window.innerWidth < 640;
       if (event.data.expanded) {
         if (isMobile) {
+          document.body.style.overflow = "hidden";
           iframe.style.setProperty("width", "100vw", "important");
           iframe.style.setProperty("height", "100dvh", "important");
           iframe.style.setProperty("max-height", "none", "important");
@@ -82,11 +83,12 @@
           iframe.style.setProperty("border-radius", "16px", "important");
         }
       } else {
+        document.body.style.overflow = "";
         iframe.style.setProperty("width", "64px", "important");
         iframe.style.setProperty("height", "64px", "important");
         iframe.style.setProperty("max-height", "none", "important");
         iframe.style.setProperty("box-shadow", "none", "important");
-        iframe.style.setProperty("border-radius", "none", "important");
+        iframe.style.setProperty("border-radius", "0", "important");
         iframe.style.setProperty("bottom", "20px", "important");
         if (position === "left") {
           iframe.style.setProperty("left", "20px", "important");

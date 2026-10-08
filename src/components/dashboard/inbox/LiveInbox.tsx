@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import usePartySocket from "partysocket/react";
 import {
   ResizablePanelGroup,
@@ -39,6 +39,7 @@ export function LiveInbox() {
   const [workspaceId, setWorkspaceId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isVisitorTyping, setIsVisitorTyping] = useState(false);
+  const visitorTypingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 1. Fetch workspace ID and real conversations from Postgres on mount
   useEffect(() => {
@@ -276,9 +277,11 @@ export function LiveInbox() {
           );
         } else if (data.type === "typing") {
           if (data.payload?.sender === "visitor" || !data.payload?.sender) {
+            if (visitorTypingTimerRef.current) clearTimeout(visitorTypingTimerRef.current);
             setIsVisitorTyping(true);
-            const timer = setTimeout(() => setIsVisitorTyping(false), 3000);
-            return () => clearTimeout(timer);
+            visitorTypingTimerRef.current = setTimeout(() => {
+              setIsVisitorTyping(false);
+            }, 3000);
           }
         }
       } catch (e) {

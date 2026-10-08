@@ -11,6 +11,11 @@ const ConversationStatusEnum = z.enum([
   "RESOLVED",
 ]);
 
+type AuthSession = {
+  user?: { id?: string; name?: string; email?: string };
+  data?: { user?: { id?: string; name?: string; email?: string } };
+} | null;
+
 export const conversationRouter = {
   sendMessage: pub
     .input(
@@ -27,53 +32,35 @@ export const conversationRouter = {
       const { workspaceId, conversationId, visitorToken, sender, text, metadata } = input;
       const vToken = visitorToken || conversationId;
 
-      // 1. Ensure conversation exists in Postgres
-      let conversation = await prisma.conversation.findUnique({
-        where: { id: conversationId },
-      });
-
-      if (!conversation) {
-        // Ensure workspace exists first
-        const workspace = await prisma.workspace.findUnique({
-          where: { id: workspaceId },
-        });
-
-        if (!workspace) {
-          // Auto-provision workspace if missing
-          await prisma.workspace.create({
-            data: {
-              id: workspaceId,
-              name: "Support Workspace",
-              ownerUserId: "system-auto",
-              widgetSettings: {
-                create: {},
-              },
-            },
-          });
-        }
-
-        conversation = await prisma.conversation.create({
-          data: {
-            id: conversationId,
-            workspaceId,
-            visitorId: vToken,
-            visitorToken: vToken,
-            status: sender === "operator" ? "OPERATOR_ANSWERED" : "AI_ANSWERING",
+      // 1. Ensure workspace exists via upsert (race-safe)
+      await prisma.workspace.upsert({
+        where: { id: workspaceId },
+        update: {},
+        create: {
+          id: workspaceId,
+          name: "Support Workspace",
+          ownerUserId: "system-auto",
+          widgetSettings: {
+            create: {},
           },
-        });
-      }
-
-      // 2. Persist message in Postgres
-      const message = await prisma.message.create({
-        data: {
-          conversationId,
-          sender,
-          text,
-          metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : undefined,
         },
       });
 
-      // 3. Update conversation updatedAt and atomically transition status if applicable
+      // 2. Ensure conversation exists via upsert (race-safe)
+      const initialStatus = sender === "operator" ? "OPERATOR_ANSWERED" : "AI_ANSWERING";
+      const conversation = await prisma.conversation.upsert({
+        where: { id: conversationId },
+        update: {},
+        create: {
+          id: conversationId,
+          workspaceId,
+          visitorId: vToken,
+          visitorToken: vToken,
+          status: initialStatus,
+        },
+      });
+
+      // 3. Determine status transition
       let statusUpdate: "OPERATOR_ANSWERED" | "AI_ANSWERING" | undefined;
       if (sender === "operator") {
         statusUpdate = "OPERATOR_ANSWERED";
@@ -81,13 +68,24 @@ export const conversationRouter = {
         statusUpdate = "AI_ANSWERING";
       }
 
-      const updatedConv = await prisma.conversation.update({
-        where: { id: conversationId },
-        data: {
-          updatedAt: new Date(),
-          ...(statusUpdate ? { status: statusUpdate } : {}),
-        },
-      });
+      // 4. Atomically persist message and update conversation inside a transaction
+      const [message, updatedConv] = await prisma.$transaction([
+        prisma.message.create({
+          data: {
+            conversationId,
+            sender,
+            text,
+            metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : undefined,
+          },
+        }),
+        prisma.conversation.update({
+          where: { id: conversationId },
+          data: {
+            updatedAt: new Date(),
+            ...(statusUpdate ? { status: statusUpdate } : {}),
+          },
+        }),
+      ]);
       const nextStatus = updatedConv.status;
 
       // 4. Server-first broadcast to PartyKit Edge room
@@ -162,7 +160,7 @@ export const conversationRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const session = (await auth.getSession()) as any;
+      const session = (await auth.getSession()) as AuthSession;
       const userId = session?.user?.id || session?.data?.user?.id;
 
       if (!userId && process.env.NODE_ENV === "production") {
@@ -222,7 +220,7 @@ export const conversationRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const session = (await auth.getSession()) as any;
+      const session = (await auth.getSession()) as AuthSession;
       const userId = session?.user?.id || session?.data?.user?.id;
 
       if (!userId && process.env.NODE_ENV === "production") {

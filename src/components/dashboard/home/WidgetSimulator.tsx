@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WidgetSettings, ChatMessage } from "./types";
+import { cn } from "@/lib/utils";
 
 interface WidgetSimulatorProps {
   settings: WidgetSettings;
@@ -50,11 +51,13 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
     },
   ]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll inside chat
+  // Auto-scroll inside chat without triggering window or main viewport scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, isTyping]);
 
   const handleReset = () => {
@@ -203,8 +206,8 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
             <Sparkles className="h-4 w-4 text-primary" />
             Live Widget Simulator
           </span>
-          <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono text-muted-foreground">
-            Mocked Edge
+          <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+            Interactive
           </Badge>
         </div>
 
@@ -222,10 +225,28 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
         </div>
       </div>
 
-      {/* Simulator Canvas / Host Site Mockup */}
-      <div className="relative flex-1 min-h-[580px] rounded-2xl border border-border bg-gradient-to-b from-muted/30 via-background to-muted/20 overflow-hidden shadow-inner p-4 md:p-6 flex flex-col justify-between">
+      {/* Simulator Canvas / Host Site Mockup with Browser Window Header */}
+      <div className="relative flex-1 min-h-[580px] rounded-2xl border border-border bg-gradient-to-b from-muted/30 via-background to-muted/20 overflow-hidden shadow-inner flex flex-col justify-between">
+        {/* Browser Mock Header */}
+        <div className="px-4 py-2.5 border-b border-border/80 bg-muted/40 backdrop-blur-sm flex items-center justify-between select-none">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500/70 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500/70 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70 inline-block" />
+            </div>
+            <div className="ml-3 px-3 py-1 rounded-md bg-background/80 border border-border/60 text-[11px] font-mono text-muted-foreground flex items-center gap-1.5 max-w-[220px] truncate">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              https://acme-store.com
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-muted-foreground uppercase">
+            Host Preview
+          </span>
+        </div>
+
         {/* Mock Host Website UI Background Elements */}
-        <div className="pointer-events-none select-none opacity-40 space-y-4 max-w-md">
+        <div className="p-6 pointer-events-none select-none opacity-40 space-y-4 max-w-md">
           <div className="h-4 w-32 rounded bg-muted-foreground/20" />
           <div className="h-7 w-64 rounded bg-muted-foreground/25" />
           <div className="space-y-2">
@@ -239,26 +260,53 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
           </div>
         </div>
 
-        {/* Floating Chat Widget Simulator (Right Column bottom) */}
-        <div className="relative z-20 flex flex-col items-end self-end mt-auto max-w-full">
+        {/* Floating Chat Widget Simulator (Positioned based on settings.position) */}
+        <div
+          className={cn(
+            "relative z-20 flex flex-col p-4 md:p-6 mt-auto max-w-full transition-all duration-300",
+            settings.position === "left" ? "items-start self-start" : "items-end self-end"
+          )}
+        >
           {isOpen ? (
             <div
-              className={`w-[360px] max-w-[calc(100vw-2rem)] h-[490px] rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 ${
-                isDarkMode ? "bg-zinc-950 text-zinc-100" : "bg-card text-card-foreground"
+              className={`w-[360px] max-w-[calc(100vw-2rem)] h-[490px] rounded-2xl border border-white/15 dark:border-white/10 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 backdrop-blur-xl ${
+                isDarkMode ? "bg-zinc-950/95 text-zinc-100" : "bg-card/95 text-card-foreground"
               }`}
             >
-              {/* Widget Header with dynamic accent */}
+              {/* Widget Header with dynamic accent & Heyo mark */}
               <div
-                className="px-4 py-3 flex items-center justify-between text-white shrink-0 shadow-sm"
+                className="px-4 py-3 flex items-center justify-between text-white shrink-0 shadow-sm relative overflow-hidden"
                 style={{ backgroundColor: settings.primaryColor }}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-xs shrink-0">
-                    <Bot className="h-4 w-4 text-white" />
+                {/* Subtle sheen highlight */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
+
+                <div className="flex items-center gap-2.5 min-w-0 relative z-10">
+                  <div className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-xs shrink-0 ring-1 ring-white/30 overflow-hidden">
+                    {settings.botAvatarType === "custom" && settings.customAvatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={settings.customAvatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : settings.botAvatarType === "glass" ? (
+                      <div
+                        className="h-full w-full rounded-full relative overflow-hidden"
+                        style={{
+                          background: "radial-gradient(circle at 35% 25%, #60a5fa 0%, #2563eb 45%, #1e3a8a 80%, #0f172a 100%)",
+                        }}
+                      >
+                        <div className="absolute top-0.5 left-1 w-3/5 h-2/5 rounded-full bg-gradient-to-b from-white/70 to-transparent pointer-events-none" />
+                      </div>
+                    ) : settings.botAvatarType === "sparkle" ? (
+                      <span className="text-sm">✨</span>
+                    ) : (
+                      <Bot className="h-4 w-4 text-white" />
+                    )}
                   </div>
                   <div className="truncate">
-                    <p className="text-xs font-bold leading-tight truncate">
-                      {settings.brandTitle || "Heyo Support"}
+                    <p className="text-xs font-bold leading-tight truncate flex items-center gap-1.5">
+                      <span>{settings.brandTitle || "Heyo Support"}</span>
+                      <span className="font-pixel text-[9px] uppercase tracking-wider px-1 py-0.2 rounded bg-black/30 text-white/90">
+                        AI
+                      </span>
                     </p>
                     <p className="text-[10px] text-white/80 leading-none truncate mt-0.5">
                       {statusState === "WAITING_HUMAN"
@@ -268,12 +316,12 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 relative z-10">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setIsOpen(false)}
-                    className="h-7 w-7 rounded-lg hover:bg-white/20 text-white"
+                    className="h-7 w-7 rounded-lg hover:bg-white/20 text-white cursor-pointer"
                     aria-label="Close widget"
                     title="Minimize chat widget"
                   >
@@ -289,14 +337,14 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                     <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                     Waiting for Human Operator
                   </span>
-                  <Badge variant="outline" className="text-[9px] py-0 px-1 border-amber-500/40">
+                  <Badge variant="outline" className="text-[9px] py-0 px-1 border-amber-500/40 font-mono">
                     Handoff
                   </Badge>
                 </div>
               )}
 
-              {/* Widget Chat Message Feed */}
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs">
+              {/* Widget Chat Message Feed with scoped ref */}
+              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs scroll-smooth">
                 {messages.map((msg) => {
                   const isVisitor = msg.sender === "visitor";
                   const isSystem = msg.sender === "system";
@@ -312,36 +360,76 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                     );
                   }
 
+                  const renderBotAvatar = () => {
+                    if (settings.botAvatarType === "custom" && settings.customAvatarUrl) {
+                      return (
+                        <div className="h-6 w-6 rounded-full overflow-hidden shrink-0 border border-border/80 shadow-2xs mt-0.5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={settings.customAvatarUrl} alt="Bot" className="h-full w-full object-cover" />
+                        </div>
+                      );
+                    }
+                    if (settings.botAvatarType === "glass") {
+                      return (
+                        <div
+                          className="h-6 w-6 rounded-full relative overflow-hidden shrink-0 shadow-2xs mt-0.5"
+                          style={{
+                            background: "radial-gradient(circle at 35% 25%, #60a5fa 0%, #2563eb 45%, #1e3a8a 80%, #0f172a 100%)",
+                          }}
+                        >
+                          <div className="absolute top-0.5 left-0.5 w-3/5 h-2/5 rounded-full bg-gradient-to-b from-white/70 to-transparent pointer-events-none" />
+                        </div>
+                      );
+                    }
+                    if (settings.botAvatarType === "sparkle") {
+                      return (
+                        <div className="h-6 w-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                          <span>✨</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                        <Bot className="h-3.5 w-3.5" />
+                      </div>
+                    );
+                  };
+
                   return (
                     <div
                       key={msg.id}
-                      className={`flex flex-col ${isVisitor ? "items-end" : "items-start"}`}
+                      className={`flex ${isVisitor ? "justify-end" : "justify-start items-start gap-2"}`}
                     >
-                      <div
-                        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${
-                          isVisitor
-                            ? "text-white"
-                            : isDarkMode
-                            ? "bg-zinc-800/90 text-zinc-100 border border-zinc-700/60"
-                            : "bg-muted/70 text-foreground border border-border"
-                        }`}
-                        style={isVisitor ? { backgroundColor: settings.primaryColor } : {}}
-                      >
-                        <p>{msg.text}</p>
-                      </div>
+                      {!isVisitor && renderBotAvatar()}
+
+                      <div className={`flex flex-col ${isVisitor ? "items-end" : "items-start min-w-0"}`}>
+                        <div
+                          className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow-2xs leading-relaxed ${
+                            isVisitor
+                              ? "text-white"
+                              : isDarkMode
+                              ? "bg-zinc-800/90 text-zinc-100 border border-zinc-700/60"
+                              : "bg-muted/70 text-foreground border border-border"
+                          }`}
+                          style={isVisitor ? { backgroundColor: settings.primaryColor } : {}}
+                        >
+                          <p>{msg.text}</p>
+                        </div>
 
                       {/* Bot response badge / Guardrail indicator */}
                       {!isVisitor && msg.metadata && (
                         <div className="flex items-center gap-1.5 mt-1 px-1">
                           {msg.isOffTopic ? (
-                            <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-medium">
+                            <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-medium font-pixel">
                               <ShieldAlert className="h-3 w-3" />
-                              Step 3 Filtered (Off-Topic)
+                              FILTERED (OFF-TOPIC)
                             </span>
                           ) : (
                             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                               <Sparkles className="h-3 w-3 text-emerald-500" />
-                              <span>Grounded Answer</span>
+                              <span className="font-pixel text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                Grounded Answer
+                              </span>
                               {msg.metadata.latencyMs && (
                                 <span className="font-mono text-[9px] opacity-70">
                                   ({msg.metadata.latencyMs}ms)
@@ -352,8 +440,9 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
 
                 {/* Live typing indicator */}
                 {isTyping && (
@@ -363,13 +452,11 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                     <span className="h-1.5 w-1.5 rounded-full bg-foreground/40 animate-bounce [animation-delay:0.4s]" />
                   </div>
                 )}
-
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Sample Guardrail Quick Buttons */}
               <div className="px-3 py-1.5 border-t border-border/60 bg-muted/20 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-                <span className="text-[10px] font-semibold text-muted-foreground shrink-0 uppercase">
+                <span className="text-[10px] font-semibold text-muted-foreground shrink-0 uppercase font-pixel text-[9px]">
                   Test:
                 </span>
                 {SAMPLE_PROMPTS.map((p) => (
@@ -379,7 +466,7 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handleSendMessage(p.query)}
-                    className="shrink-0 h-6 px-2 py-0 text-[10px] font-normal"
+                    className="shrink-0 h-6 px-2 py-0 text-[10px] font-normal cursor-pointer"
                   >
                     {p.label}
                   </Button>
@@ -406,7 +493,7 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                     type="submit"
                     size="icon"
                     disabled={!inputVal.trim() || isTyping}
-                    className="h-8 w-8 rounded-xl shrink-0"
+                    className="h-8 w-8 rounded-xl shrink-0 cursor-pointer"
                     style={{ backgroundColor: settings.primaryColor }}
                     aria-label="Send message"
                   >
@@ -432,10 +519,28 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
             <Button
               type="button"
               onClick={() => setIsOpen(true)}
-              className="gap-2.5 px-4 py-3 rounded-full text-white shadow-xl hover:opacity-95 h-auto cursor-pointer"
+              className="gap-2.5 px-4 py-3 rounded-full text-white shadow-xl hover:opacity-95 h-auto cursor-pointer border border-white/20 backdrop-blur-md"
               style={{ backgroundColor: settings.primaryColor }}
             >
-              <MessageSquare className="h-5 w-5" />
+              {settings.botAvatarType === "custom" && settings.customAvatarUrl ? (
+                <div className="h-5 w-5 rounded-full overflow-hidden border border-white/50 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={settings.customAvatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                </div>
+              ) : settings.botAvatarType === "glass" ? (
+                <div
+                  className="h-5 w-5 rounded-full relative overflow-hidden shrink-0 border border-white/30"
+                  style={{
+                    background: "radial-gradient(circle at 35% 25%, #60a5fa 0%, #2563eb 45%, #1e3a8a 80%, #0f172a 100%)",
+                  }}
+                >
+                  <div className="absolute top-0.5 left-0.5 w-3/5 h-2/5 rounded-full bg-gradient-to-b from-white/70 to-transparent pointer-events-none" />
+                </div>
+              ) : settings.botAvatarType === "sparkle" ? (
+                <span className="text-sm">✨</span>
+              ) : (
+                <MessageSquare className="h-4 w-4" />
+              )}
               <span className="text-xs font-semibold">{settings.brandTitle || "Chat with us"}</span>
             </Button>
           )}

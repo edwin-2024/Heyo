@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heyo Widget Embed Test Host</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 40px;
+      background: #0f172a;
+      color: #f8fafc;
+      line-height: 1.6;
+    }
+    .card {
+      max-width: 650px;
+      margin: 0 auto;
+      background: #1e293b;
+      padding: 32px;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 22px;
+      color: #38bdf8;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0284c7;
+      color: white;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 16px;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #0369a1;
+    }
+    .btn-secondary {
+      background: #334155;
+      color: #f8fafc;
+      margin-left: 8px;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    input {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+      width: calc(100% - 26px);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">🧪 Host Application Embed Test</div>
+    <h1>Host Application (Simulated Customer Website)</h1>
+    <p>This page tests embedding the lightweight Heyo widget script (<code>public/widget.js</code>).</p>
+    
+    <label for="wsInput" style="font-size: 12px; font-weight: 600; color: #cbd5e1;">Workspace ID:</label>
+    <input type="text" id="wsInput" placeholder="Enter workspace ID..." value="" />
+
+    <div style="margin-top: 16px;">
+      <a href="/demo" class="btn">🚀 Open Full Demo Website (/demo)</a>
+      <a href="/dashboard/inbox" target="_blank" class="btn btn-secondary">Open Operator Inbox ↗</a>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #334155; margin: 24px 0;" />
+
+    <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">
+      Click the chat bubble in the bottom right corner to test live conversation persistence, PartyKit WebSockets, and operator handoff.
+    </p>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    let wsId = urlParams.get('workspaceId') || 'cmuyd7bm50000ux5s9bu9ew4i';
+    const input = document.getElementById('wsInput');
+    input.value = wsId;
+
+    input.addEventListener('change', () => {
+      window.location.search = '?workspaceId=' + encodeURIComponent(input.value.trim());
+    });
+
+    const script = document.createElement('script');
+    script.src = window.location.origin + '/widget.js';
+    script.setAttribute('data-workspace', wsId);
+    script.setAttribute('data-position', 'right');
+    script.setAttribute('data-host', window.location.origin);
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>

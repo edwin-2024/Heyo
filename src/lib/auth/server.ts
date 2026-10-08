@@ -1,3 +1,4 @@
+import "@/lib/dns-bootstrap";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 
 export const auth = createNeonAuth({

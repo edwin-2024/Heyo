@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, memo, useCallback } from "react";
-import { Search, Check, X } from "lucide-react";
+import { Search, Check, X, Inbox, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -52,10 +52,10 @@ const ConversationRow = memo(function ConversationRow({
     <div
       onClick={() => onSelect(item.id)}
       className={cn(
-        "w-full text-left p-3.5 transition-[background-color,transform] duration-150 ease-out cursor-pointer group flex items-start gap-3 relative border-b border-border/40 select-none",
+        "w-full text-left p-3.5 transition-all duration-150 ease-out cursor-pointer group flex items-start gap-3 relative border-b border-border/40 select-none",
         isSelected
-          ? "bg-neutral-100 dark:bg-neutral-800/70"
-          : "bg-transparent hover:bg-muted/40 active:scale-[0.99]"
+          ? "bg-blue-500/10 dark:bg-blue-950/40 border-l-3 border-l-blue-600 shadow-xs"
+          : "bg-transparent hover:bg-muted/40 active:scale-[0.99] border-l-3 border-l-transparent"
       )}
     >
       <VisitorAvatar
@@ -254,10 +254,30 @@ export function ConversationList({
       {/* Conversations Scrollable List */}
       <ScrollArea className="flex-1">
         {conversations.length === 0 ? (
-          <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
-            <p className="font-medium text-foreground">No visitors found</p>
-            <p className="text-[11px]">Try selecting another tab or clear your search.</p>
-          </div>
+          searchQuery || activeFilter !== "all" ? (
+            <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
+              <p className="font-medium text-foreground">No matching conversations</p>
+              <p className="text-[11px]">Try selecting another tab or clear your search.</p>
+            </div>
+          ) : (
+            <div className="p-6 text-center space-y-3.5 flex flex-col items-center justify-center h-full min-h-[300px]">
+              <div className="h-12 w-12 rounded-2xl bg-muted/60 border border-border/80 flex items-center justify-center text-muted-foreground shadow-xs">
+                <Inbox className="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
+              </div>
+              <div className="space-y-1 max-w-[220px]">
+                <p className="font-semibold text-foreground text-sm">Inbox is empty</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  When visitors send a message via your chat widget, conversations will appear here in real time.
+                </p>
+              </div>
+              <Button asChild size="sm" variant="outline" className="text-xs gap-1.5 shadow-xs cursor-pointer">
+                <a href="/demo" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                  <span>Test on Demo Website</span>
+                </a>
+              </Button>
+            </div>
+          )
         ) : (
           <div className="divide-y divide-border/40">
             {conversations.map((item) => (

@@ -19,9 +19,5 @@ export default async function InboxPage() {
         },
       };
 
-  return (
-    <DashboardShell initialTab="inbox" initialSession={session}>
-      <LiveInbox />
-    </DashboardShell>
-  );
+  return <DashboardShell initialTab="inbox" initialSession={session} />;
 }

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { VisitorAvatar } from "./VisitorAvatar";
+import { VisitorAvatar, ChatbotGlassAvatar } from "./VisitorAvatar";
 import { AiReasoningCard } from "./AiReasoningCard";
 import { ConversationItem } from "./types";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,8 @@ interface ActiveThreadProps {
   onCloseThread: () => void;
   showInspector: boolean;
   onToggleInspector: () => void;
+  isVisitorTyping?: boolean;
+  onOperatorTyping?: () => void;
 }
 
 export function ActiveThread({
@@ -41,6 +43,8 @@ export function ActiveThread({
   onCloseThread,
   showInspector,
   onToggleInspector,
+  isVisitorTyping = false,
+  onOperatorTyping,
 }: ActiveThreadProps) {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -48,7 +52,7 @@ export function ActiveThread({
   // Auto-scroll to bottom of thread when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation?.messages]);
+  }, [conversation?.messages, isVisitorTyping]);
 
   // Keyboard shortcut: Esc closes/deselects active thread
   useEffect(() => {
@@ -100,18 +104,18 @@ export function ActiveThread({
   const isClosed = conversation.status === "CLOSED";
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-neutral-50/50 dark:bg-neutral-950 overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative">
       {/* 1. Thread Header matching reference mockups with explicit Close button */}
-      <div className="h-14 px-4 sm:px-5 border-b border-border flex items-center justify-between shrink-0 bg-white dark:bg-neutral-900 z-10 select-none">
+      <div className="h-16 px-4 sm:px-6 border-b border-border flex items-center justify-between shrink-0 bg-card/80 backdrop-blur-md z-10 select-none">
         {/* Left: Visitor Name, Status pill, Location & Local time */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3.5 min-w-0">
           <VisitorAvatar
             seed={conversation.visitor.avatarSeed}
             name={conversation.visitor.name}
             isOnline={conversation.visitor.isOnline}
             size="md"
           />
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-foreground truncate">
                 {conversation.visitor.name}
@@ -137,7 +141,7 @@ export function ActiveThread({
                   : "Agent"}
               </Badge>
             </div>
-            <p className="text-[11px] text-muted-foreground truncate">
+            <p className="text-[11px] text-muted-foreground truncate font-mono">
               {conversation.visitor.location} · {conversation.visitor.localTime}
             </p>
           </div>
@@ -213,12 +217,12 @@ export function ActiveThread({
             const isAi = msg.sender === "ai";
             const isOperator = msg.sender === "operator";
 
-            // If it's a greeting from AI (like in mockup 1 top right)
+            // If it's a greeting from AI (matching reference image top right)
             if (isAi && msg.text.startsWith("Hello from this super friendly agent")) {
               return (
                 <div key={msg.id} className="flex flex-col items-end gap-1 my-2">
-                  <span className="text-[11px] text-neutral-400 font-medium pr-1">Greeting</span>
-                  <div className="rounded-2xl rounded-tr-xs px-4 py-2.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-foreground shadow-xs">
+                  <span className="text-[11px] text-muted-foreground font-medium pr-1">Greeting</span>
+                  <div className="rounded-2xl rounded-tr-xs px-4 py-2.5 bg-card border border-border text-xs text-foreground shadow-xs">
                     {msg.text}
                   </div>
                 </div>
@@ -262,7 +266,7 @@ export function ActiveThread({
 
                 {/* Visitor question pill matching mockup 1 (clean bubble with rounded pill shape) */}
                 {isVisitor && (
-                  <div className="self-start rounded-2xl rounded-tl-xs px-4 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-sm font-medium text-foreground shadow-xs max-w-xl">
+                  <div className="self-start rounded-2xl rounded-tl-xs px-4 py-3 bg-card border border-border text-sm font-medium text-foreground shadow-xs max-w-xl">
                     {msg.text}
                   </div>
                 )}
@@ -274,28 +278,33 @@ export function ActiveThread({
                   </div>
                 )}
 
-                {/* AI Answer Bubble matching mockup 1 (rounded bubble with citation footer) */}
+                {/* AI Answer Bubble matching reference image (rounded bubble with ChatbotGlassAvatar) */}
                 {isAi && (
-                  <div className="relative">
-                    <div className="rounded-2xl px-5 py-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 text-xs text-neutral-800 dark:text-neutral-100 leading-relaxed max-w-xl shadow-xs space-y-3">
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                  <div className="relative flex items-start gap-3">
+                    <div className="flex-1 space-y-2">
+                      <div className="rounded-2xl px-5 py-4 bg-muted/60 dark:bg-card border border-border text-xs text-foreground leading-relaxed shadow-xs space-y-3">
+                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                      </div>
+
+                      {msg.citation && (
+                        <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground mt-1.5 pr-1">
+                          <span>Answered from</span>
+                          <span className="inline-flex items-center gap-1 font-mono text-foreground font-medium">
+                            <FileText className="h-3 w-3 text-primary" />
+                            {msg.citation.documentName}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {msg.citation && (
-                      <div className="flex items-center justify-end gap-1.5 text-[11px] text-neutral-500 mt-1.5 pr-1">
-                        <span>Answered from</span>
-                        <span className="inline-flex items-center gap-1 font-mono text-neutral-700 dark:text-neutral-300 font-medium">
-                          <FileText className="h-3 w-3" />
-                          {msg.citation.documentName}
-                        </span>
-                      </div>
-                    )}
+                    {/* Chatbot Glass 3D Avatar Orb on the right (matching reference image) */}
+                    <ChatbotGlassAvatar size="md" className="mt-1 shrink-0" />
                   </div>
                 )}
 
                 {/* Operator Response Bubble */}
                 {isOperator && (
-                  <div className="self-end rounded-2xl rounded-tr-xs px-4 py-3 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs leading-relaxed max-w-xl shadow-xs">
+                  <div className="self-end rounded-2xl rounded-tr-xs px-4 py-3 bg-primary text-primary-foreground text-xs leading-relaxed max-w-xl shadow-xs">
                     {msg.text}
                   </div>
                 )}
@@ -303,35 +312,57 @@ export function ActiveThread({
             );
           })}
 
+          {/* Visitor Typing Indicator */}
+          {isVisitorTyping && (
+            <div className="flex items-center gap-2.5 py-1.5 animate-in fade-in">
+              <VisitorAvatar
+                seed={conversation.visitor.avatarSeed}
+                name={conversation.visitor.name}
+                size="sm"
+              />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl rounded-bl-xs bg-muted/60 border border-border/70 text-foreground text-xs shadow-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
+                <span className="text-[11px] text-muted-foreground ml-1 font-medium">
+                  {conversation.visitor.name} is typing...
+                </span>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* 3. Takeover Reply Bar matching reference mockup 1 */}
-      <div className="p-4 border-t border-border bg-white dark:bg-neutral-900 shrink-0">
-        <div className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-950 p-2.5 focus-within:ring-2 focus-within:ring-neutral-400 focus-within:border-transparent transition-[box-shadow,border-color] duration-150 ease-out">
+      <div className="p-4 border-t border-border bg-card/80 backdrop-blur-md shrink-0">
+        <div className="relative rounded-2xl border border-border bg-background p-3 focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition-all shadow-xs">
           <Textarea
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => {
+              setInputText(e.target.value);
+              onOperatorTyping?.();
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Reply to the visitor..."
-            className="w-full resize-none border-0 bg-transparent text-xs text-foreground p-1 focus-visible:ring-0 min-h-[50px] max-h-32 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 shadow-none"
+            className="w-full resize-none border-0 bg-transparent text-xs text-foreground p-1 focus-visible:ring-0 min-h-[50px] max-h-32 placeholder:text-muted-foreground shadow-none"
           />
 
-          <div className="flex items-center justify-between pt-2 border-t border-neutral-200/50 dark:border-neutral-800/50">
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <div className="flex items-center justify-between pt-2 border-t border-border/60">
+            <span className="text-[11px] text-muted-foreground">
               Sending a reply takes over from the agent.
             </span>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono hidden sm:inline">
+              <span className="text-[11px] text-muted-foreground font-mono hidden sm:inline">
                 ⌘ Enter
               </span>
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={!inputText.trim()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 transition-[background-color,transform,opacity] duration-150 ease-out shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 transition-all shadow-xs cursor-pointer"
               >
                 <span>Send</span>
                 <Send className="h-3 w-3" />

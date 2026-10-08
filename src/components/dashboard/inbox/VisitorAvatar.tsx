@@ -160,3 +160,38 @@ export const VisitorAvatar = React.memo(function VisitorAvatar({
     </div>
   );
 });
+
+/**
+ * Premium 3D Liquid-Glass Chatbot Orb Avatar (matching Heyo design language)
+ */
+export const ChatbotGlassAvatar = React.memo(function ChatbotGlassAvatar({
+  size = "md",
+  className,
+}: {
+  size?: "sm" | "md" | "lg" | "xl";
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative rounded-full shrink-0 flex items-center justify-center overflow-hidden select-none transition-transform duration-200 hover:scale-105",
+        SIZE_CLASSES[size],
+        className
+      )}
+      style={{
+        background:
+          "radial-gradient(circle at 35% 25%, #60a5fa 0%, #2563eb 45%, #1e3a8a 80%, #0f172a 100%)",
+        boxShadow:
+          "inset -3px -3px 8px rgba(0, 0, 0, 0.4), inset 3px 3px 6px rgba(255, 255, 255, 0.6), 0 4px 12px rgba(37, 99, 235, 0.35)",
+      }}
+    >
+      {/* Specular curved reflection highlight */}
+      <div
+        className="absolute top-1 left-1.5 w-3/5 h-2/5 rounded-full bg-gradient-to-b from-white/70 to-transparent pointer-events-none"
+        style={{ transform: "rotate(-25deg)" }}
+      />
+      {/* Internal liquid optical ring */}
+      <div className="absolute inset-1 rounded-full border border-white/20 pointer-events-none" />
+    </div>
+  );
+});

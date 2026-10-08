@@ -22,18 +22,25 @@ export function AiReasoningCard({ reasoning }: AiReasoningCardProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className="w-full my-2 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden text-xs shadow-xs transition-all">
-      {/* Header Bar / Collapsible Toggle matching mockup 1 */}
+    <div className="w-full my-3 rounded-2xl border border-amber-500/30 dark:border-amber-500/25 bg-amber-500/5 dark:bg-amber-950/20 overflow-hidden text-xs shadow-xs transition-all">
+      {/* Header Bar / Collapsible Toggle matching competitor screenshot */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors text-left cursor-pointer"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-amber-500/10 dark:hover:bg-amber-500/10 transition-colors text-left cursor-pointer"
       >
-        <Sparkles className="h-4 w-4 text-neutral-500 shrink-0" />
-        <span className="font-semibold text-neutral-800 dark:text-neutral-200 text-xs">
-          How the agent handled this
-        </span>
-        <div className="ml-auto text-neutral-400">
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Sparkles className="h-3.5 w-3.5" />
+          </div>
+          <span className="font-bold text-foreground text-xs">
+            Heyo AI Copilot · Autonomous Reasoning
+          </span>
+          <span className="px-1.5 py-0.2 rounded font-mono text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold">
+            Step 1
+          </span>
+        </div>
+        <div className="text-muted-foreground">
           {isOpen ? (
             <ChevronUp className="h-4 w-4" />
           ) : (
@@ -42,49 +49,58 @@ export function AiReasoningCard({ reasoning }: AiReasoningCardProps) {
         </div>
       </button>
 
-      {/* Expanded Reasoning & Chunk Retrieval Inspector matching mockup 1 */}
+      {/* Expanded Reasoning & Chunk Retrieval Inspector matching competitor reference */}
       {isOpen && (
-        <div className="px-4 pb-4 pt-1 space-y-3.5 border-t border-neutral-100 dark:border-neutral-800/80">
-          {/* Tag & Heading matching mockup 1: [Support question] + "Answered from the knowledge base" */}
-          <div className="space-y-1.5 pt-1">
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
-              {reasoning.classificationLabel}
-            </span>
-            <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
+        <div className="px-4 pb-4 pt-1 space-y-3.5 border-t border-amber-500/20 dark:border-amber-500/15">
+          {/* Tag & Heading: [Support question] + "Answered from the knowledge base" */}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-background border border-border text-foreground font-mono">
+                {reasoning.classificationLabel}
+              </span>
+              <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Cosine &ge; 0.65 Grounded
+              </span>
+            </div>
+            <h4 className="text-xs font-bold text-foreground pt-0.5">
               {reasoning.statusBadge}
             </h4>
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-normal">
+            <p className="text-[11px] text-muted-foreground leading-normal">
               {reasoning.thresholdNote}
             </p>
           </div>
 
           {/* Chunk Match List with Progress Bars & Scores (account-help.md: 0.70 Used) */}
-          <div className="space-y-2 pt-1">
+          <div className="space-y-2 p-3 rounded-xl bg-background/60 dark:bg-black/30 border border-border/80">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground font-mono pb-1 border-b border-border/50">
+              Vector Retrieval Telemetry (pgvector 384d)
+            </div>
             {reasoning.retrievedChunks.map((chunk, idx) => {
               const isUsed = chunk.status === "USED";
 
               return (
                 <div
                   key={idx}
-                  className="grid grid-cols-12 items-center gap-2 text-xs py-0.5"
+                  className="grid grid-cols-12 items-center gap-2 text-xs py-1"
                 >
                   {/* Document Name (5 cols) */}
-                  <span className="col-span-5 font-mono text-[11px] text-neutral-800 dark:text-neutral-200 truncate">
+                  <span className="col-span-5 font-mono text-[11px] text-foreground truncate font-medium">
                     {chunk.documentName}
                   </span>
 
-                  {/* Horizontal Bar (4 cols) matching mockup 1: blue for Used, grey for below */}
+                  {/* Horizontal Bar (4 cols) */}
                   <div className="col-span-4 flex items-center gap-2">
-                    <div className="w-16 h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className={cn(
-                          "h-full rounded-full",
-                          isUsed ? "bg-blue-600" : "bg-neutral-400 dark:bg-neutral-600"
+                          "h-full rounded-full transition-all",
+                          isUsed ? "bg-amber-500 dark:bg-amber-400" : "bg-muted-foreground/30"
                         )}
                         style={{ width: `${Math.round(chunk.similarity * 100)}%` }}
                       />
                     </div>
-                    <span className="font-mono text-[11px] text-neutral-600 dark:text-neutral-400">
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">
                       {chunk.similarity.toFixed(2)}
                     </span>
                   </div>
@@ -93,13 +109,13 @@ export function AiReasoningCard({ reasoning }: AiReasoningCardProps) {
                   <div className="col-span-3 text-right">
                     <span
                       className={cn(
-                        "text-[11px] font-medium",
+                        "text-[10px] font-mono uppercase px-1.5 py-0.5 rounded",
                         isUsed
-                          ? "text-neutral-900 dark:text-white font-semibold"
-                          : "text-neutral-400 dark:text-neutral-500"
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-semibold"
+                          : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {isUsed ? "Used" : "Below threshold"}
+                      {isUsed ? "Grounded" : "Below 0.65"}
                     </span>
                   </div>
                 </div>
@@ -107,9 +123,10 @@ export function AiReasoningCard({ reasoning }: AiReasoningCardProps) {
             })}
           </div>
 
-          {/* Model Metrics Footer matching mockup 1: gpt-5-4-nano · First word in 2.9s · Done in 3.6s · 1,081 tokens in, 84 out */}
-          <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800 text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
-            {reasoning.modelsUsed} · First word in {(reasoning.latencyFirstWordMs / 1000).toFixed(1)} s · Done in {reasoning.latencyTotalSeconds} s · {reasoning.tokensIn.toLocaleString()} tokens in, {reasoning.tokensOut} out
+          {/* Model Metrics Footer */}
+          <div className="pt-2 border-t border-amber-500/20 text-[10px] text-muted-foreground font-mono flex items-center justify-between flex-wrap gap-2">
+            <span>{reasoning.modelsUsed} · Groq LPU</span>
+            <span>First token {(reasoning.latencyFirstWordMs / 1000).toFixed(1)}s · Done in {reasoning.latencyTotalSeconds}s · {reasoning.tokensIn.toLocaleString()} in / {reasoning.tokensOut} out</span>
           </div>
         </div>
       )}

@@ -88,14 +88,6 @@ const ConversationRow = memo(function ConversationRow({
                   <Check className="h-3 w-3" />
                 </button>
               )}
-              <button
-                type="button"
-                onClick={(e) => onDismissDirectly(item.id, e)}
-                className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-rose-600 hover:bg-background border border-border/70 active:scale-95 transition-transform cursor-pointer"
-                title="Close / archive chat"
-              >
-                <X className="h-3 w-3" />
-              </button>
             </div>
           </div>
         </div>

@@ -33,6 +33,7 @@ interface ActiveThreadProps {
   onToggleInspector: () => void;
   isVisitorTyping?: boolean;
   onOperatorTyping?: () => void;
+  onToggleAgent?: (conversationId: string, enabled: boolean) => void;
 }
 
 export function ActiveThread({
@@ -45,6 +46,7 @@ export function ActiveThread({
   onToggleInspector,
   isVisitorTyping = false,
   onOperatorTyping,
+  onToggleAgent,
 }: ActiveThreadProps) {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -147,8 +149,34 @@ export function ActiveThread({
           </div>
         </div>
 
-        {/* Right: Actions (Takeover, Resolve, Inspector Toggle, and Close/Deselect) */}
+        {/* Right: Actions (AI Toggle, Takeover, Resolve, Inspector Toggle, and Deselect) */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* AI Agent Toggle Button */}
+          {conversation.status !== "CLOSED" && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => onToggleAgent?.(conversation.id, conversation.status !== "AI_ANSWERING")}
+              className={cn(
+                "h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5 transition-colors cursor-pointer",
+                conversation.status === "AI_ANSWERING"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+              )}
+              title={
+                conversation.status === "AI_ANSWERING"
+                  ? "AI Agent is Active: Click to pause AI"
+                  : "AI Agent is Paused: Click to enable AI"
+              }
+            >
+              <Bot className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">
+                Agent: {conversation.status === "AI_ANSWERING" ? "ON" : "OFF"}
+              </span>
+            </Button>
+          )}
+
           {conversation.status === "WAITING_HUMAN" && (
             <Button
               size="sm"
@@ -183,15 +211,15 @@ export function ActiveThread({
             <Sidebar className="h-4 w-4" />
           </Button>
 
-          {/* Close/Deselect thread button */}
+          {/* Deselect thread button */}
           <Button
             variant="outline"
             size="sm"
             onClick={onCloseThread}
             className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1 ml-1"
-            title="Close this chat (Esc)"
+            title="Deselect active thread (Esc)"
           >
-            <span className="hidden sm:inline">Close</span>
+            <span className="hidden sm:inline">Deselect</span>
             <kbd className="hidden lg:inline text-[10px] font-mono text-muted-foreground/80 px-1 py-0.2 rounded bg-muted/60 border border-border">
               Esc
             </kbd>

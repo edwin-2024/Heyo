@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import usePartySocket from "partysocket/react";
-import { MessageCircle, X, Send, Sparkles, Bot } from "lucide-react";
+import { MessageCircle, X, Send, Sparkles, Bot, CheckCircle2, RefreshCw, User } from "lucide-react";
 import { orpc } from "@/lib/orpc";
 
 interface MessageItem {
@@ -29,6 +29,7 @@ export function EmbedClient({
     customAvatarUrl?: string;
     welcomeMessage: string;
     themeMode: string;
+    allowHumanEscalation?: boolean;
   };
 }) {
   const [currentSettings, setCurrentSettings] = useState(settings);
@@ -38,6 +39,8 @@ export function EmbedClient({
   const [isSending, setIsSending] = useState(false);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [conversationStatus, setConversationStatus] = useState<string>("AI_ANSWERING");
+  const [isEscalating, setIsEscalating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -85,15 +88,20 @@ export function EmbedClient({
     orpc.conversation
       .getConversation({ workspaceId, conversationId })
       .then((res) => {
-        if (mounted && res && res.messages) {
-          setMessages(
-            res.messages.map((m) => ({
-              id: m.id,
-              sender: m.sender as MessageItem["sender"],
-              text: m.text,
-              createdAt: m.createdAt,
-            }))
-          );
+        if (mounted && res) {
+          if (res.status) {
+            setConversationStatus(res.status);
+          }
+          if (res.messages) {
+            setMessages(
+              res.messages.map((m) => ({
+                id: m.id,
+                sender: m.sender as MessageItem["sender"],
+                text: m.text,
+                createdAt: m.createdAt,
+              }))
+            );
+          }
         }
       })
       .catch((err) => {
@@ -123,6 +131,8 @@ export function EmbedClient({
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+        } else if (data.type === "status:changed" && data.payload?.status) {
+          setConversationStatus(data.payload.status);
         } else if (data.type === "typing") {
           if (data.payload?.sender === "operator" || !data.payload?.sender) {
             if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -157,6 +167,33 @@ export function EmbedClient({
     window.parent.postMessage({ type: "heyo:resize", expanded: next }, "*");
   };
 
+  const handleStartNewConversation = () => {
+    if (typeof window !== "undefined") {
+      window.parent.postMessage({ type: "heyo:reset_session" }, "*");
+      const newToken =
+        "v_" + (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now());
+      const url = new URL(window.location.href);
+      url.searchParams.set("visitor_token", newToken);
+      window.location.href = url.toString();
+    }
+  };
+
+  const handleRequestHuman = async () => {
+    if (isEscalating || conversationStatus === "WAITING_HUMAN" || conversationStatus === "HUMAN_ACTIVE") return;
+    setIsEscalating(true);
+    try {
+      await orpc.conversation.requestHumanEscalation({
+        workspaceId,
+        conversationId,
+      });
+      setConversationStatus("WAITING_HUMAN");
+    } catch (err) {
+      console.error("Failed to request human escalation:", err);
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
   const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed || isSending) return;
@@ -166,6 +203,15 @@ export function EmbedClient({
     setIsSending(true);
 
     try {
+      const clientMetadata = typeof window !== "undefined" ? {
+        origin: window.location.search
+          ? new URLSearchParams(window.location.search).get("origin") || document.referrer || window.location.origin
+          : document.referrer || window.location.origin,
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      } : undefined;
+
       // ADR-0002: Server-first persistence to Neon Postgres.
       // Next.js persists to DB and immediately broadcasts to PartyKit room.
       await orpc.conversation.sendMessage({
@@ -174,7 +220,12 @@ export function EmbedClient({
         visitorToken,
         sender: "visitor",
         text: trimmed,
+        metadata: clientMetadata,
       });
+
+      if (conversationStatus === "RESOLVED") {
+        setConversationStatus("AI_ANSWERING");
+      }
     } catch (err: any) {
       console.error("Failed to send message via oRPC:", err);
       // Restore input and notify user so unpersisted ghost messages are never shown
@@ -296,13 +347,27 @@ export function EmbedClient({
             </div>
           </div>
         </div>
-        <button
-          onClick={toggleExpanded}
-          aria-label="Close chat"
-          className="rounded-full p-1.5 text-white/80 hover:text-white hover:bg-white/15 transition cursor-pointer relative z-10 shrink-0"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1.5 relative z-10 shrink-0">
+          {conversationStatus === "AI_ANSWERING" && currentSettings.allowHumanEscalation !== false && (
+            <button
+              type="button"
+              onClick={handleRequestHuman}
+              disabled={isEscalating}
+              title="Talk to a human operator"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 text-[11px] text-white font-medium transition cursor-pointer disabled:opacity-50"
+            >
+              <User className="h-3 w-3" />
+              <span>Talk to human</span>
+            </button>
+          )}
+          <button
+            onClick={toggleExpanded}
+            aria-label="Close chat"
+            className="rounded-full p-1.5 text-white/80 hover:text-white hover:bg-white/15 transition cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Messages Scroll Area */}
@@ -351,6 +416,55 @@ export function EmbedClient({
             </div>
           );
         })}
+
+        {/* Waiting for Human Alert */}
+        {conversationStatus === "WAITING_HUMAN" && (
+          <div className="my-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center animate-in fade-in">
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+              Connecting with human operator...
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              An operator has been notified and will reply here shortly.
+            </p>
+          </div>
+        )}
+
+        {/* Resolved Alert & Reset Option */}
+        {conversationStatus === "RESOLVED" && (
+          <div className="my-3 mx-1 p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-center animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Conversation resolved</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              This support conversation has been marked as resolved by our team.
+            </p>
+            <button
+              type="button"
+              onClick={handleStartNewConversation}
+              className="mt-2.5 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white shadow-xs hover:opacity-90 active:scale-95 transition cursor-pointer"
+              style={{ backgroundColor: currentSettings.primaryColor }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Start new conversation
+            </button>
+          </div>
+        )}
+
+        {/* Quick Suggestion: Talk to Human */}
+        {conversationStatus === "AI_ANSWERING" && currentSettings.allowHumanEscalation !== false && messages.length > 0 && (
+          <div className="flex justify-center my-1">
+            <button
+              type="button"
+              onClick={handleRequestHuman}
+              disabled={isEscalating}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium text-muted-foreground bg-muted/70 hover:bg-muted border border-border/70 transition cursor-pointer active:scale-95 disabled:opacity-50 shadow-2xs"
+            >
+              <User className="h-3 w-3" />
+              <span>Talk to a human operator</span>
+            </button>
+          </div>
+        )}
 
         {/* Partner Typing Indicator (when human operator or bot is typing) */}
         {partnerTyping && (

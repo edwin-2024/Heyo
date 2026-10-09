@@ -30,6 +30,75 @@ function formatRelativeTime(dateString?: string | null) {
   }
 }
 
+function parseVisitorMetadata(
+  convId: string,
+  visitorToken?: string | null,
+  metadata?: Record<string, any> | null,
+  createdAt?: string
+) {
+  const vShort = visitorToken ? visitorToken.slice(-4) : convId.slice(-4);
+  const meta = (metadata || {}) as Record<string, any>;
+
+  const ua = (meta.userAgent as string) || "";
+  let browser = "Web Browser";
+  let os = "Desktop";
+  let device = "Desktop";
+
+  if (/chrome|crios/i.test(ua) && !/edg/i.test(ua)) browser = "Chrome";
+  else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) browser = "Safari";
+  else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
+  else if (/edg/i.test(ua)) browser = "Edge";
+
+  if (/iphone|ipad|ipod/i.test(ua)) {
+    os = "iOS";
+    device = "Mobile";
+  } else if (/android/i.test(ua)) {
+    os = "Android";
+    device = "Mobile";
+  } else if (/windows/i.test(ua)) {
+    os = "Windows";
+  } else if (/macintosh|mac os x/i.test(ua)) {
+    os = "macOS";
+  } else if (/linux/i.test(ua)) {
+    os = "Linux";
+  }
+
+  const timeZone = (meta.timeZone as string) || "UTC";
+  let localTime = "Active";
+  try {
+    localTime = new Date().toLocaleTimeString([], {
+      timeZone: timeZone !== "UTC" ? timeZone : undefined,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    localTime = "Active";
+  }
+
+  const origin = (meta.origin as string) || "External Website";
+  const language = (meta.language as string) || "en-US";
+
+  return {
+    id: visitorToken || convId,
+    name: `Visitor ${vShort}`,
+    handle: `@visitor_${vShort}`,
+    avatarSeed: visitorToken || convId,
+    isOnline: true,
+    email: (meta.email as string) || undefined,
+    currentPage: origin,
+    location: timeZone !== "UTC" ? timeZone.replace(/_/g, " ") : "Web Visitor",
+    localTime,
+    language,
+    device,
+    browser,
+    os,
+    cameFrom: origin !== "External Website" ? origin : "Direct",
+    firstSeen: formatRelativeTime(createdAt),
+    lastSeen: "Just now",
+    visitsCount: 1,
+  };
+}
+
 export function LiveInbox() {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -74,25 +143,12 @@ export function LiveInbox() {
                 startedAt: conv.createdAt,
                 relativeTime: formatRelativeTime(conv.updatedAt),
                 unreadCount: undefined,
-                visitor: {
-                  id: conv.visitorId || conv.id,
-                  name: `Visitor ${vShort}`,
-                  handle: `@visitor_${vShort}`,
-                  avatarSeed: conv.visitorToken || conv.id,
-                  isOnline: true,
-                  email: "visitor@example.com",
-                  currentPage: "External Website",
-                  location: "Web Visitor",
-                  localTime: "Just now",
-                  language: "English (US)",
-                  device: "Desktop / Browser",
-                  browser: "Chrome",
-                  os: "Desktop",
-                  cameFrom: "Direct",
-                  firstSeen: "Today",
-                  lastSeen: "Just now",
-                  visitsCount: 1,
-                },
+                visitor: parseVisitorMetadata(
+                  conv.id,
+                  conv.visitorToken,
+                  (conv.lastMessage as any)?.metadata,
+                  conv.createdAt
+                ),
                 messages: conv.lastMessage
                   ? [
                       {
@@ -182,25 +238,12 @@ export function LiveInbox() {
                 startedAt: new Date().toISOString(),
                 relativeTime: "Just now",
                 unreadCount: 1,
-                visitor: {
-                  id: conversationId,
-                  name: `Visitor ${vShort}`,
-                  handle: `@visitor_${vShort}`,
-                  avatarSeed: conversationId,
-                  isOnline: true,
-                  email: "visitor@example.com",
-                  currentPage: "External Website",
-                  location: "Web Visitor",
-                  localTime: "Just now",
-                  language: "English (US)",
-                  device: "Desktop / Chrome",
-                  browser: "Chrome",
-                  os: "Windows",
-                  cameFrom: "Direct",
-                  firstSeen: "Just now",
-                  lastSeen: "Just now",
-                  visitsCount: 1,
-                },
+                visitor: parseVisitorMetadata(
+                  conversationId,
+                  null,
+                  (lastMessage as any)?.metadata,
+                  new Date().toISOString()
+                ),
                 messages: lastMessage
                   ? [
                       {
@@ -545,6 +588,47 @@ export function LiveInbox() {
     [workspaceId]
   );
 
+  const handleToggleAgent = useCallback(
+    async (conversationId: string, enabled: boolean) => {
+      const newStatus = enabled ? "AI_ANSWERING" : "WAITING_HUMAN";
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === conversationId) {
+            return {
+              ...c,
+              status: newStatus,
+              messages: [
+                ...c.messages,
+                {
+                  id: `msg-${Date.now()}`,
+                  conversationId,
+                  sender: "system" as const,
+                  senderName: "System",
+                  text: enabled
+                    ? "AI agent resumed for this conversation."
+                    : "AI agent paused by operator. Conversation marked as Waiting for human.",
+                  createdAt: "Just now",
+                },
+              ],
+            };
+          }
+          return c;
+        })
+      );
+
+      try {
+        await orpc.conversation.updateStatus({
+          workspaceId,
+          conversationId,
+          status: newStatus,
+        });
+      } catch (err) {
+        console.error("Failed to update agent toggle status in Postgres:", err);
+      }
+    },
+    [workspaceId]
+  );
+
   const handleDismiss = useCallback((conversationId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setConversations((prev) => prev.filter((c) => c.id !== conversationId));
@@ -600,6 +684,7 @@ export function LiveInbox() {
             onToggleInspector={handleToggleInspector}
             isVisitorTyping={isVisitorTyping}
             onOperatorTyping={handleOperatorTyping}
+            onToggleAgent={handleToggleAgent}
           />
         </ResizablePanel>
 

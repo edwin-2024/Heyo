@@ -120,6 +120,17 @@
         iframe.style.setProperty("right", "20px", "important");
         iframe.style.setProperty("left", "auto", "important");
       }
+    } else if (event.data && event.data.type === "heyo:reset_session") {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
+      visitorToken = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? "v_" + crypto.randomUUID()
+        : "v_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
+      try {
+        localStorage.setItem(storageKey, visitorToken);
+      } catch (e) {}
+      iframe.src = host + "/embed/" + encodeURIComponent(workspaceId) + "?visitor_token=" + encodeURIComponent(visitorToken) + "&position=" + encodeURIComponent(position) + "&origin=" + encodeURIComponent(window.location.origin);
     } else if (event.data && event.data.type === "heyo:ready") {
       if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: "heyo:init", origin: window.location.origin }, host);

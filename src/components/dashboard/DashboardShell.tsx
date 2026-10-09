@@ -37,6 +37,7 @@ import {
 import { LiveInbox } from "@/components/dashboard/inbox/LiveInbox";
 import { HomeDashboardOverview } from "@/components/dashboard/home/HomeDashboardOverview";
 import { cn } from "@/lib/utils";
+import { orpc } from "@/lib/orpc";
 
 export type NavTab = "home" | "inbox";
 
@@ -72,6 +73,31 @@ export function DashboardShell({
     name?: string;
     avatarUrl?: string | null;
   }>({});
+
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  // Sync unread / waiting inbox conversation count
+  useEffect(() => {
+    let mounted = true;
+    orpc.workspace
+      .getWorkspace()
+      .then(async (ws) => {
+        if (!mounted || !ws?.id) return;
+        try {
+          const list = await orpc.conversation.listConversations({ workspaceId: ws.id });
+          if (!mounted || !list) return;
+          const waiting = list.filter((c) => c.status === "WAITING_HUMAN" || c.status === "AI_ANSWERING").length;
+          setUnreadCount(waiting);
+        } catch {
+          // ignore
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab]);
 
   // Sync isCollapsed and operator profile from localStorage on mount
   useEffect(() => {
@@ -330,7 +356,9 @@ export function DashboardShell({
                     aria-label="Inbox"
                   >
                     <Inbox className="h-5 w-5" />
-                    <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Inbox</TooltipContent>
@@ -350,9 +378,11 @@ export function DashboardShell({
                   <Inbox className="h-4 w-4" />
                   <span>Inbox</span>
                 </div>
-                <span className="flex h-5 items-center justify-center rounded-full bg-emerald-500/15 px-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                  Live
-                </span>
+                {unreadCount > 0 && (
+                  <span className="flex h-5 items-center justify-center rounded-full bg-emerald-500/15 px-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
             )}
 

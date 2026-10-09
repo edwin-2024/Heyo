@@ -188,65 +188,49 @@ export default function LandingPage() {
               min-[901px]:flex min-[901px]:gap-2
             `}
           >
-            <button
+            <Button
               type="button"
+              variant="liquidPill"
+              size="nav"
               onClick={() => openPill("benefits")}
               className="appear appear--scale nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.16s" } as React.CSSProperties}
             >
-              <Button
-                variant="liquidPill"
-                size="nav"
-                className="w-full h-full pointer-events-none"
-              >
-                Benefits
-              </Button>
-            </button>
+              Benefits
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="liquidPill"
+              size="nav"
               onClick={() => openPill("guardrails")}
               className="appear appear--soft nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.28s" } as React.CSSProperties}
             >
-              <Button
-                variant="liquidPill"
-                size="nav"
-                className="w-full h-full pointer-events-none"
-              >
-                Guardrails & RAG
-              </Button>
-            </button>
+              Guardrails & RAG
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="liquidPill"
+              size="nav"
               onClick={() => openPill("architecture")}
               className="appear appear--scale nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.40s" } as React.CSSProperties}
             >
-              <Button
-                variant="liquidPill"
-                size="nav"
-                className="w-full h-full pointer-events-none"
-              >
-                Architecture
-              </Button>
-            </button>
+              Architecture
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="liquidPill"
+              size="nav"
               onClick={() => openPill("pricing")}
               className="appear appear--soft nav-pill-shine max-[900px]:w-full max-[900px]:h-14 max-[900px]:text-[19px] max-[900px]:rounded-[10px] cursor-pointer"
               style={{ "--d": "0.52s" } as React.CSSProperties}
             >
-              <Button
-                variant="liquidPill"
-                size="nav"
-                className="w-full h-full pointer-events-none"
-              >
-                Pricing
-              </Button>
-            </button>
+              Pricing
+            </Button>
           </nav>
 
           {/* Right: Auth Action & Mobile Burger */}

@@ -86,6 +86,7 @@ export default async function EmbedPage({
     customAvatarUrl: "",
     themeMode: "system",
     welcomeMessage: "Hey there! 👋 How can our team or AI assistant help you today?",
+    allowHumanEscalation: true,
   };
 
   try {
@@ -102,6 +103,7 @@ export default async function EmbedPage({
         customAvatarUrl: dbSettings.customAvatarUrl || "",
         themeMode: dbSettings.themeMode || settings.themeMode,
         welcomeMessage: dbSettings.welcomeMessage || settings.welcomeMessage,
+        allowHumanEscalation: dbSettings.allowHumanEscalation ?? true,
       };
     }
   } catch (e) {

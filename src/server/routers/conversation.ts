@@ -227,6 +227,7 @@ export const conversationRouter = {
               sender: conv.messages[0].sender,
               text: conv.messages[0].text,
               createdAt: conv.messages[0].createdAt.toISOString(),
+              metadata: conv.messages[0].metadata,
             }
           : null,
       }));
@@ -265,5 +266,67 @@ export const conversationRouter = {
       });
 
       return updated;
+    }),
+
+  requestHumanEscalation: pub
+    .input(
+      z.object({
+        workspaceId: z.string(),
+        conversationId: z.string(),
+      })
+    )
+    .handler(async ({ input }) => {
+      const effectiveConvId = input.conversationId.startsWith(`conv_${input.workspaceId}_`)
+        ? input.conversationId
+        : `conv_${input.workspaceId}_${input.conversationId}`;
+
+      const conversation = await prisma.conversation.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          OR: [{ id: input.conversationId }, { id: effectiveConvId }],
+        },
+      });
+
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+
+      const updated = await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { status: "WAITING_HUMAN", updatedAt: new Date() },
+      });
+
+      const message = await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          sender: "system",
+          text: "Visitor requested to speak with a human operator.",
+        },
+      });
+
+      const messagePayload = {
+        id: message.id,
+        conversationId: conversation.id,
+        sender: message.sender,
+        text: message.text,
+        createdAt: message.createdAt.toISOString(),
+      };
+
+      await broadcastToPartyKit(`room_${input.workspaceId}_${conversation.id}`, {
+        type: "status:changed",
+        payload: { status: "WAITING_HUMAN" },
+      });
+
+      await broadcastToPartyKit(`room_${input.workspaceId}_${conversation.id}`, {
+        type: "message",
+        payload: messagePayload,
+      });
+
+      await broadcastToPartyKit(`inbox_${input.workspaceId}`, {
+        type: "conversation:status_changed",
+        payload: { conversationId: conversation.id, status: "WAITING_HUMAN" },
+      });
+
+      return { success: true, status: "WAITING_HUMAN", message: messagePayload };
     }),
 };

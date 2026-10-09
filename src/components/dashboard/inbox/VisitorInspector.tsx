@@ -78,18 +78,29 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
                 {visitor.name}
               </h4>
               <p className="text-[11px] text-muted-foreground">
-                {visitor.location}
+                {visitor.email || `Anonymous · ${visitor.location}`}
               </p>
             </div>
           </div>
 
-          {/* Visitor Attributes Section matching mockup 1 */}
+          {/* Visitor Attributes Section */}
           <div className="space-y-3 pt-2">
             <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
               Visitor
             </h5>
 
             <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium text-foreground">
+                  {visitor.email ? (
+                    visitor.email
+                  ) : (
+                    <span className="text-muted-foreground font-normal italic">Unidentified (Anonymous)</span>
+                  )}
+                </span>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Location</span>
                 <span className="font-medium text-foreground">{visitor.location}</span>
@@ -99,10 +110,10 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
                 <span className="text-muted-foreground">Local time</span>
                 <div className="text-right">
                   <div className="font-semibold text-foreground">
-                    {visitor.localTime.split(" ")[0]}
+                    {visitor.localTime}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {visitor.localTime.includes("Europe") ? "Europe/Berlin" : "America/New_York"}
+                    {visitor.location}
                   </div>
                 </div>
               </div>
@@ -156,7 +167,7 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
             </div>
           </div>
 
-          {/* Conversation Attributes Section matching mockup 1 */}
+          {/* Conversation Attributes Section */}
           <div className="space-y-3 pt-4 border-t border-border/60">
             <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
               Conversation
@@ -167,10 +178,22 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
                 <span className="text-muted-foreground">State</span>
                 <div className="text-right">
                   <div className="font-semibold text-foreground">
-                    {conversation.status === "WAITING_HUMAN" ? "Agent" : conversation.status === "HUMAN_ACTIVE" ? "Operator" : "Agent"}
+                    {conversation.status === "WAITING_HUMAN"
+                      ? "Waiting for Human"
+                      : conversation.status === "HUMAN_ACTIVE"
+                      ? "Operator Active"
+                      : conversation.status === "CLOSED"
+                      ? "Resolved"
+                      : "AI Agent Active"}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {conversation.status === "WAITING_HUMAN" ? "Waiting for human" : "The agent is replying"}
+                    {conversation.status === "WAITING_HUMAN"
+                      ? "Operator needed"
+                      : conversation.status === "HUMAN_ACTIVE"
+                      ? "Operator is handling"
+                      : conversation.status === "CLOSED"
+                      ? "Conversation closed"
+                      : "Autonomous AI agent"}
                   </div>
                 </div>
               </div>
@@ -178,18 +201,27 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Handoff reason</span>
                 <span className="font-medium text-foreground">
-                  {conversation.handoffReason || "No handoff"}
+                  {conversation.handoffReason || "None"}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Started</span>
-                <span className="font-medium text-foreground">{conversation.startedAt}</span>
+                <span className="font-medium text-foreground">
+                  {conversation.startedAt
+                    ? new Date(conversation.startedAt).toLocaleString([], {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : "Recently"}
+                </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Last message</span>
-                <span className="font-medium text-foreground">{conversation.relativeTime} ago</span>
+                <span className="font-medium text-foreground">
+                  {conversation.relativeTime}
+                </span>
               </div>
             </div>
           </div>

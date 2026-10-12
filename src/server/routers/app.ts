@@ -2,6 +2,7 @@ import { pub } from "@/server/orpc";
 import { z } from "zod";
 import { workspaceRouter } from "./workspace";
 import { conversationRouter } from "./conversation";
+import { documentRouter } from "./document";
 
 export const appRouter = {
   health: pub
@@ -15,6 +16,7 @@ export const appRouter = {
     }),
   workspace: workspaceRouter,
   conversation: conversationRouter,
+  document: documentRouter,
 };
 
 export type AppRouter = typeof appRouter;

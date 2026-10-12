@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import usePartySocket from "partysocket/react";
 import { MessageCircle, X, Send, Sparkles, Bot, CheckCircle2, RefreshCw, User } from "lucide-react";
 import { orpc } from "@/lib/orpc";
@@ -30,6 +30,7 @@ export function EmbedClient({
     welcomeMessage: string;
     themeMode: string;
     allowHumanEscalation?: boolean;
+    suggestedQuestions?: string;
   };
 }) {
   const [currentSettings, setCurrentSettings] = useState(settings);
@@ -37,6 +38,7 @@ export function EmbedClient({
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [conversationStatus, setConversationStatus] = useState<string>("AI_ANSWERING");
@@ -121,6 +123,10 @@ export function EmbedClient({
       try {
         const data = JSON.parse(event.data);
         if (data.type === "message" && data.payload) {
+          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+          setPartnerTyping(false);
+          setIsSending(false);
+          setStreamingMessageId(null);
           const newMsg: MessageItem = {
             id: data.payload.id || String(Date.now()),
             sender: data.payload.sender,
@@ -129,18 +135,80 @@ export function EmbedClient({
           };
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
+            // If it's a visitor message, replace the matching optimistic message
+            if (newMsg.sender === "visitor") {
+              const hasOptimistic = prev.some((m) => m.id.startsWith("optimistic_") && m.text === newMsg.text);
+              if (hasOptimistic) {
+                return prev.map((m) => (m.id.startsWith("optimistic_") && m.text === newMsg.text ? newMsg : m));
+              }
+            }
+            // If the message is from bot and there is an in-progress streaming message, replace it
+            if (newMsg.sender === "bot" && prev.some((m) => m.id.startsWith("ai_msg_"))) {
+              return prev.map((m) => (m.id.startsWith("ai_msg_") ? newMsg : m));
+            }
             return [...prev, newMsg];
           });
         } else if (data.type === "status:changed" && data.payload?.status) {
           setConversationStatus(data.payload.status);
         } else if (data.type === "typing") {
-          if (data.payload?.sender === "operator" || !data.payload?.sender) {
+          if (data.payload?.sender === "operator" || data.payload?.sender === "bot" || !data.payload?.sender) {
             if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
             setPartnerTyping(true);
             typingTimerRef.current = setTimeout(() => {
               setPartnerTyping(false);
             }, 3000);
           }
+        } else if (data.type === "stream:start" && data.payload) {
+          const { messageId } = data.payload;
+          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+          setPartnerTyping(false);
+          setIsSending(false);
+          setStreamingMessageId(messageId);
+          setMessages((prev) => {
+            const filtered = prev.filter((m) => !m.id.startsWith("ai_msg_"));
+            return [
+              ...filtered,
+              {
+                id: messageId,
+                sender: "bot",
+                text: "",
+                createdAt: new Date().toISOString(),
+              },
+            ];
+          });
+        } else if (data.type === "stream:chunk" && data.payload) {
+          const { messageId, chunk } = data.payload;
+          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+          setPartnerTyping(false);
+          setIsSending(false);
+          setStreamingMessageId(messageId);
+          setMessages((prev) => {
+            const exists = prev.some((m) => m.id === messageId);
+            if (!exists) {
+              return [
+                ...prev.filter((m) => !m.id.startsWith("ai_msg_")),
+                {
+                  id: messageId,
+                  sender: "bot",
+                  text: chunk,
+                  createdAt: new Date().toISOString(),
+                },
+              ];
+            }
+            return prev.map((m) =>
+              m.id === messageId ? { ...m, text: m.text + chunk } : m
+            );
+          });
+        } else if (data.type === "stream:end" && data.payload) {
+          const { messageId, fullText } = data.payload;
+          setStreamingMessageId(null);
+          setIsSending(false);
+          setPartnerTyping(false);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId ? { ...m, text: fullText !== undefined ? fullText : m.text } : m
+            )
+          );
         }
       } catch (e) {
         // parse error
@@ -194,13 +262,40 @@ export function EmbedClient({
     }
   };
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const suggestedQuestions = useMemo(() => {
+    try {
+      if (!currentSettings.suggestedQuestions) return [];
+      const parsed = JSON.parse(currentSettings.suggestedQuestions);
+      if (Array.isArray(parsed)) return parsed.filter((q) => typeof q === "string" && q.trim());
+    } catch {
+      return (currentSettings.suggestedQuestions || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return [];
+  }, [currentSettings.suggestedQuestions]);
+
+  const handleSend = async (textToSend?: string) => {
+    const raw = textToSend !== undefined ? textToSend : input;
+    const trimmed = raw.trim();
     if (!trimmed || isSending) return;
 
+    const optimisticId = `optimistic_${Date.now()}`;
+    const optimisticMsg: MessageItem = {
+      id: optimisticId,
+      sender: "visitor",
+      text: trimmed,
+      createdAt: new Date().toISOString(),
+    };
+
     setSendError(null);
-    setInput("");
+    if (textToSend === undefined) {
+      setInput("");
+    }
     setIsSending(true);
+    // Optimistically render visitor message immediately in the chat thread
+    setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
       const clientMetadata = typeof window !== "undefined" ? {
@@ -228,7 +323,8 @@ export function EmbedClient({
       }
     } catch (err: any) {
       console.error("Failed to send message via oRPC:", err);
-      // Restore input and notify user so unpersisted ghost messages are never shown
+      // Remove optimistic message and restore input if network fails
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       setInput(trimmed);
       setSendError("Failed to deliver message. Please check connection and try again.");
     } finally {
@@ -393,6 +489,7 @@ export function EmbedClient({
         {/* Conversation Thread */}
         {messages.map((m) => {
           const isVisitor = m.sender === "visitor";
+          const isCurrentlyStreaming = m.id === streamingMessageId;
           return (
             <div
               key={m.id}
@@ -411,7 +508,13 @@ export function EmbedClient({
                 }`}
                 style={isVisitor ? { backgroundColor: currentSettings.primaryColor } : {}}
               >
-                {m.text}
+                <span>{m.text}</span>
+                {isCurrentlyStreaming && (
+                  <span
+                    className="inline-block w-1.5 h-3.5 bg-primary/70 animate-pulse ml-0.5 rounded-xs align-middle"
+                    aria-hidden="true"
+                  />
+                )}
               </div>
             </div>
           );
@@ -426,6 +529,13 @@ export function EmbedClient({
             <p className="text-[11px] text-muted-foreground mt-0.5">
               An operator has been notified and will reply here shortly.
             </p>
+            <button
+              type="button"
+              onClick={handleStartNewConversation}
+              className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 underline hover:opacity-80 transition cursor-pointer"
+            >
+              Start a new conversation
+            </button>
           </div>
         )}
 
@@ -451,23 +561,9 @@ export function EmbedClient({
           </div>
         )}
 
-        {/* Quick Suggestion: Talk to Human */}
-        {conversationStatus === "AI_ANSWERING" && currentSettings.allowHumanEscalation !== false && messages.length > 0 && (
-          <div className="flex justify-center my-1">
-            <button
-              type="button"
-              onClick={handleRequestHuman}
-              disabled={isEscalating}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium text-muted-foreground bg-muted/70 hover:bg-muted border border-border/70 transition cursor-pointer active:scale-95 disabled:opacity-50 shadow-2xs"
-            >
-              <User className="h-3 w-3" />
-              <span>Talk to a human operator</span>
-            </button>
-          </div>
-        )}
 
-        {/* Partner Typing Indicator (when human operator or bot is typing) */}
-        {partnerTyping && (
+        {/* Partner Typing Indicator (when human operator or bot is typing before stream) */}
+        {!streamingMessageId && partnerTyping && (
           <div className="flex items-center gap-2 self-start animate-in fade-in">
             {renderAvatar("h-6 w-6")}
             <div
@@ -487,8 +583,8 @@ export function EmbedClient({
           </div>
         )}
 
-        {/* AI / Sending Thinking Indicator */}
-        {isSending && (
+        {/* AI / Sending Thinking Indicator (only before tokens arrive and partner not typing) */}
+        {!streamingMessageId && !partnerTyping && isSending && (
           <div className="flex items-center gap-2 self-start animate-in fade-in">
             {renderAvatar("h-6 w-6")}
             <div
@@ -513,6 +609,33 @@ export function EmbedClient({
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Suggested Questions Chips (visible on fresh conversation before visitor types) */}
+      {suggestedQuestions.length > 0 && messages.filter((m) => m.sender === "visitor").length === 0 && (
+        <div
+          className={`px-3 py-2 border-t flex flex-col gap-1.5 shrink-0 ${
+            isDark ? "bg-zinc-950/90 border-zinc-800" : "bg-gray-50/90 border-gray-200/80"
+          }`}
+        >
+          <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <Sparkles className="h-3 w-3 text-sky-500" />
+            <span>Suggested Questions</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestedQuestions.map((q, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSend(q)}
+                disabled={isSending}
+                className="text-left text-xs px-2.5 py-1.5 rounded-xl border border-border/80 bg-background hover:bg-primary/10 hover:border-primary/40 hover:text-primary active:scale-[0.97] transition-all cursor-pointer shadow-2xs leading-tight text-foreground disabled:opacity-50"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Error notification */}
       {sendError && (
@@ -549,7 +672,7 @@ export function EmbedClient({
           }`}
         />
         <button
-          onClick={handleSend}
+          onClick={() => handleSend()}
           disabled={!input.trim() || isSending}
           aria-label="Send message"
           className="flex h-8 w-8 items-center justify-center rounded-full text-white shadow-xs transition hover:opacity-90 disabled:opacity-40 cursor-pointer shrink-0"

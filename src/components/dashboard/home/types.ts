@@ -12,6 +12,7 @@ export interface WidgetSettings {
   offlineEmailCapture: boolean;
   allowedDomains: string;
   workspaceId: string;
+  suggestedQuestions?: string;
 }
 
 export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
@@ -24,10 +25,15 @@ export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
   customAvatarUrl: "",
   welcomeMessage: "Hey there! 👋 How can our team or AI assistant help you today?",
   allowHumanEscalation: true,
-  handoffThreshold: 0.65,
+  handoffThreshold: 0.55,
   offlineEmailCapture: true,
-  allowedDomains: "https://example.com, localhost:3000",
+  allowedDomains: "http://localhost:3000, http://localhost:4000, http://localhost:5000, https://example.com",
   workspaceId: "ws_live_01",
+  suggestedQuestions: JSON.stringify([
+    "How do I request a refund?",
+    "What are your subscription pricing plans?",
+    "What are the API rate limits?",
+  ]),
 };
 
 export interface ChatMessage {

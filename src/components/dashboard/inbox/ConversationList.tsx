@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { VisitorAvatar } from "./VisitorAvatar";
 import { ConversationItem, FilterTab } from "./types";
 import { cn } from "@/lib/utils";
@@ -58,13 +64,21 @@ const ConversationRow = memo(function ConversationRow({
           : "bg-transparent hover:bg-muted/40 active:scale-[0.99] border-l-3 border-l-transparent"
       )}
     >
-      <VisitorAvatar
-        seed={item.visitor.avatarSeed}
-        name={item.visitor.name}
-        isOnline={item.visitor.isOnline}
-        size="md"
-        className="mt-0.5 shrink-0"
-      />
+      <div className="relative shrink-0">
+        <VisitorAvatar
+          seed={item.visitor.avatarSeed}
+          name={item.visitor.name}
+          size="md"
+          className="mt-0.5"
+        />
+        {/* Unread dot: only visible when conversation has unread messages and is not selected */}
+        {Boolean(item.unreadCount && item.unreadCount > 0 && !isSelected) && (
+          <span
+            className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-background animate-pulse"
+            title="Unread message"
+          />
+        )}
+      </div>
 
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center justify-between gap-1.5">
@@ -79,14 +93,21 @@ const ConversationRow = memo(function ConversationRow({
 
             <div className="hidden group-hover:flex items-center gap-1">
               {item.status !== "CLOSED" && (
-                <button
-                  type="button"
-                  onClick={(e) => onResolveDirectly(item.id, e)}
-                  className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-background border border-border/70 active:scale-95 transition-transform cursor-pointer"
-                  title="Quick resolve chat"
-                >
-                  <Check className="h-3 w-3" />
-                </button>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => onResolveDirectly(item.id, e)}
+                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:bg-background border border-border/70 active:scale-95 transition-transform cursor-pointer"
+                        aria-label="Quick resolve chat"
+                      >
+                        <Check className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Quick resolve chat</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           </div>

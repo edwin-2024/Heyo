@@ -2,13 +2,13 @@ export interface WidgetSettings {
   brandTitle: string;
   botDisplayName: string;
   primaryColor: string;
-  themeMode: "dark" | "light" | "system";
+  themeMode: "light" | "dark" | "system";
   position: "right" | "left";
   botAvatarType: "glass" | "bot" | "sparkle" | "custom";
   customAvatarUrl?: string;
   welcomeMessage: string;
   allowHumanEscalation: boolean;
-  handoffThreshold: number; // e.g. 0.65
+  handoffThreshold: number;
   offlineEmailCapture: boolean;
   allowedDomains: string;
   workspaceId: string;
@@ -29,11 +29,7 @@ export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
   offlineEmailCapture: true,
   allowedDomains: "http://localhost:3000, http://localhost:4000, http://localhost:5000, https://example.com",
   workspaceId: "ws_live_01",
-  suggestedQuestions: JSON.stringify([
-    "How do I request a refund?",
-    "What are your subscription pricing plans?",
-    "What are the API rate limits?",
-  ]),
+  suggestedQuestions: "[]",
 };
 
 export interface ChatMessage {

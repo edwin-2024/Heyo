@@ -77,6 +77,65 @@ export function chunkText(
 }
 
 /**
+ * Uses Groq to extract 3-4 natural visitor questions based on uploaded document content.
+ */
+async function generateSuggestedQuestions(chunks: { content: string }[]): Promise<string[]> {
+  const apiKey = process.env.GROQ_API_KEY;
+  const sampleText = chunks.slice(0, 4).map((c) => c.content).join("\n\n").slice(0, 3000);
+
+  if (!apiKey || !sampleText.trim()) {
+    return [];
+  }
+
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-20b",
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              'Generate 3 to 4 concise, high-value FAQ questions that a website visitor or customer would ask based on the provided document text. Return strictly JSON with format: {"questions": ["question 1", "question 2", ...]}',
+          },
+          {
+            role: "user",
+            content: sampleText,
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(`[Ingestion] Groq suggested question generation status: ${res.status}`);
+      return [];
+    }
+
+    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return [];
+
+    const parsed = JSON.parse(content) as { questions?: string[] };
+    if (Array.isArray(parsed.questions)) {
+      return parsed.questions
+        .map((q) => q.trim())
+        .filter((q) => q.length > 5 && q.endsWith("?"))
+        .slice(0, 4);
+    }
+  } catch (err) {
+    console.warn("[Ingestion] Error generating suggested questions from document:", err);
+  }
+
+  return [];
+}
+
+/**
  * Coordinates end-to-end ingestion of a document:
  * 1. Fetches document record
  * 2. Fetches buffer from Neon Object Storage
@@ -84,6 +143,7 @@ export function chunkText(
  * 4. Generates 384d vector embeddings via Cloudflare Workers AI
  * 5. Persists vectors to Neon Postgres DocumentChunk table
  * 6. Marks Document as READY
+ * 7. Automatically extracts and populates suggested prompts/questions into widget settings
  */
 export async function ingestDocument({
   workspaceId,
@@ -153,6 +213,37 @@ export async function ingestDocument({
         updatedAt: new Date(),
       },
     });
+
+    // Auto-populate suggested questions into WidgetSettings from the ingested document
+    try {
+      const generatedQuestions = await generateSuggestedQuestions(chunks);
+      if (generatedQuestions.length > 0) {
+        const settings = await prisma.widgetSettings.findUnique({
+          where: { workspaceId },
+        });
+
+        let currentList: string[] = [];
+        if (settings?.suggestedQuestions) {
+          try {
+            currentList = JSON.parse(settings.suggestedQuestions);
+          } catch {}
+        }
+
+        const combined = Array.from(new Set([...currentList, ...generatedQuestions])).slice(0, 4);
+        await prisma.widgetSettings.upsert({
+          where: { workspaceId },
+          update: {
+            suggestedQuestions: JSON.stringify(combined),
+          },
+          create: {
+            workspaceId,
+            suggestedQuestions: JSON.stringify(combined),
+          },
+        });
+      }
+    } catch (suggestErr) {
+      console.warn("[Ingestion] Could not auto-populate suggested questions:", suggestErr);
+    }
 
     return { success: true, chunksCount: chunks.length };
   } catch (error) {

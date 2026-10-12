@@ -30,7 +30,69 @@ export const workspaceRouter = {
             name: `${userName}'s Workspace`,
             ownerUserId: userId,
             widgetSettings: {
-              create: {},
+              create: {
+                brandTitle: `${userName} Support`,
+                suggestedQuestions: "[]",
+              },
+            },
+          },
+          include: { widgetSettings: true },
+        });
+      }
+
+      return workspace;
+    }),
+
+  createOrUpdateWorkspace: pub
+    .input(
+      z.object({
+        name: z.string().min(1, "Workspace name is required").max(100),
+      })
+    )
+    .handler(async ({ input }) => {
+      const session = (await auth.getSession()) as AuthSession;
+      const userId = session?.user?.id || session?.data?.user?.id;
+
+      if (!userId) {
+        throw new Error("Unauthorized: Please sign in");
+      }
+
+      const cleanName = input.name.trim();
+
+      // Find existing workspace owned by user
+      let workspace = await prisma.workspace.findFirst({
+        where: { ownerUserId: userId },
+        include: { widgetSettings: true },
+      });
+
+      if (workspace) {
+        workspace = await prisma.workspace.update({
+          where: { id: workspace.id },
+          data: { name: cleanName },
+          include: { widgetSettings: true },
+        });
+
+        // If brandTitle was using default, update it to match new workspace name
+        if (
+          workspace.widgetSettings &&
+          (workspace.widgetSettings.brandTitle === "Heyo Support" ||
+            workspace.widgetSettings.brandTitle.endsWith("Support"))
+        ) {
+          await prisma.widgetSettings.update({
+            where: { workspaceId: workspace.id },
+            data: { brandTitle: cleanName },
+          });
+        }
+      } else {
+        workspace = await prisma.workspace.create({
+          data: {
+            name: cleanName,
+            ownerUserId: userId,
+            widgetSettings: {
+              create: {
+                brandTitle: cleanName,
+                suggestedQuestions: "[]",
+              },
             },
           },
           include: { widgetSettings: true },

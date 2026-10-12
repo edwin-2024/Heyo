@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signUp, signIn, emailOtp, useSession } from "@/lib/auth/client";
+import { orpc } from "@/lib/orpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,12 +24,15 @@ import {
 } from "@/components/ui/input-otp";
 import {
   ArrowLeft,
+  ArrowRight,
   Loader2,
   AlertCircle,
   CheckCircle2,
   KeyRound,
   Mail,
   RotateCcw,
+  Building2,
+  Sparkles,
 } from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 
@@ -41,10 +45,12 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
 
-  const [step, setStep] = useState<"form" | "verify">("form");
+  const [step, setStep] = useState<"form" | "verify" | "workspace">("form");
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -65,13 +71,13 @@ function SignupForm() {
     }
   }, [searchParams]);
 
-  // NEVER redirect to dashboard if email is unverified!
+  // NEVER redirect to dashboard if email is unverified or while completing workspace setup!
   useEffect(() => {
     const isEmailVerified = Boolean((session?.user as any)?.emailVerified);
-    if (session?.user && isEmailVerified && !isSessionLoading) {
+    if (session?.user && isEmailVerified && !isSessionLoading && step !== "workspace") {
       router.replace("/dashboard");
     }
-  }, [session, isSessionLoading, router]);
+  }, [session, isSessionLoading, router, step]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,12 +149,15 @@ function SignupForm() {
           res.error.message || "Invalid or expired verification code."
         );
       } else {
-        // Verification succeeded! Establish verified session and route to dashboard
+        // Verification succeeded!
         if (password) {
           await signIn.email({ email, password }).catch(() => {});
         }
-        router.push("/dashboard");
-        router.refresh();
+        // Move to Step 3: Prompt for Workspace Name
+        const defaultWsName = (name.trim() || email.split("@")[0]) + "'s Workspace";
+        setWorkspaceName(defaultWsName);
+        setStep("workspace");
+        setSuccessMessage("Email verified! Name your workspace to finish setup.");
       }
     } catch (err: unknown) {
       const message =
@@ -156,6 +165,26 @@ function SignupForm() {
       setErrorMessage(message);
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleCreateWorkspace = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const finalName = workspaceName.trim() || (name.trim() || email.split("@")[0]) + "'s Workspace";
+    setIsCreatingWorkspace(true);
+    setErrorMessage(null);
+
+    try {
+      await orpc.workspace.createOrUpdateWorkspace({ name: finalName });
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err: unknown) {
+      console.error("Workspace initialization err:", err);
+      // Fallback redirect to dashboard
+      router.push("/dashboard");
+      router.refresh();
+    } finally {
+      setIsCreatingWorkspace(false);
     }
   };
 
@@ -254,17 +283,17 @@ function SignupForm() {
             {/* Subtle top edge liquid shine reflection */}
             <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
-            {step === "form" ? (
+            {step === "form" && (
               <>
                 <CardHeader className="space-y-1.5 pb-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] font-pixel text-muted-foreground uppercase tracking-wider">
-                      ONBOARDING // SINGLE-MEMBER v1
+                      ONBOARDING // STEP 1
                     </span>
                     <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <CardTitle className="text-2xl font-medium tracking-tight">
-                    Create your workspace
+                    Create your account
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground">
                     Launch an autonomous, guardrailed AI support agent for your website in minutes.
@@ -367,7 +396,7 @@ function SignupForm() {
                     <div className="space-y-1 text-[11px] text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>Single-member workspace provisioned automatically</span>
+                        <span>Dedicated autonomous AI support agent</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
@@ -387,7 +416,7 @@ function SignupForm() {
                           <Loader2 className="h-4 w-4 animate-spin" /> Sending verification code...
                         </span>
                       ) : (
-                        "Create Workspace"
+                        "Create Account"
                       )}
                     </Button>
                   </form>
@@ -404,13 +433,15 @@ function SignupForm() {
                   </p>
                 </CardFooter>
               </>
-            ) : (
+            )}
+
+            {step === "verify" && (
               <>
                 {/* Step 2: Shadcn Input OTP Screen */}
                 <CardHeader className="space-y-1.5 pb-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] font-pixel text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <KeyRound className="h-3.5 w-3.5" /> OTP VERIFICATION
+                      <KeyRound className="h-3.5 w-3.5" /> STEP 2 // OTP VERIFICATION
                     </span>
                     <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
@@ -479,7 +510,7 @@ function SignupForm() {
                         <Loader2 className="h-4 w-4 animate-spin" /> Verifying code...
                       </span>
                     ) : (
-                      "Verify & Enter Dashboard"
+                      "Verify Email"
                     )}
                   </Button>
 
@@ -514,13 +545,100 @@ function SignupForm() {
                 </CardContent>
               </>
             )}
+
+            {step === "workspace" && (
+              <>
+                {/* Step 3: Workspace Name Onboarding */}
+                <CardHeader className="space-y-1.5 pb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-pixel text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5" /> STEP 3 // WORKSPACE SETUP
+                    </span>
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </div>
+                  <CardTitle className="text-2xl font-medium tracking-tight">
+                    Name your workspace
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Give your company, product, or organization a workspace name.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {errorMessage && (
+                    <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
+                  {successMessage && (
+                    <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                      <span>{successMessage}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleCreateWorkspace} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="wsName" className="text-xs flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        Workspace / Organization Name
+                      </Label>
+                      <Input
+                        id="wsName"
+                        type="text"
+                        placeholder="e.g. Acme Corp, Apex Cloud"
+                        value={workspaceName}
+                        onChange={(e) => setWorkspaceName(e.target.value)}
+                        autoFocus
+                        required
+                        disabled={isCreatingWorkspace}
+                        className="h-10 text-xs bg-background/60"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        This sets your support widget brand title and organization scope. You can change this later in settings.
+                      </p>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="default"
+                      size="btn"
+                      className="w-full font-medium shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                      disabled={isCreatingWorkspace || !workspaceName.trim()}
+                    >
+                      {isCreatingWorkspace ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Launching workspace...
+                        </>
+                      ) : (
+                        <>
+                          <span>Launch Workspace & Enter Dashboard</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+                <CardFooter className="flex justify-center border-t border-border pt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleCreateWorkspace()}
+                    disabled={isCreatingWorkspace}
+                    className="text-xs text-muted-foreground hover:text-foreground transition underline cursor-pointer"
+                  >
+                    Skip for now (use default)
+                  </button>
+                </CardFooter>
+              </>
+            )}
           </Card>
         </div>
 
         {/* Footer info */}
-        <div className="text-center sm:text-left text-[11px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border/50 pt-4">
-          <span>&copy; {new Date().getFullYear()} Heyo Technologies Inc.</span>
-          <div className="flex items-center gap-4">
+        <div className="text-center sm:text-left text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border/60 pt-6">
+          <p>© 2026 Heyo Technologies, Inc. All rights reserved.</p>
+          <div className="flex gap-4">
             <Link href="/" className="hover:text-foreground transition">Privacy</Link>
             <Link href="/" className="hover:text-foreground transition">Terms</Link>
             <Link href="/" className="hover:text-foreground transition">Security</Link>
@@ -528,45 +646,61 @@ function SignupForm() {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Interactive Security & Verification Showcase */}
-      <div className="hidden lg:flex w-1/2 bg-muted/30 border-l border-border flex-col justify-center items-center p-12 relative overflow-hidden">
-        {/* Ambient radial glows */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* RIGHT COLUMN: Interactive Feature Showcase Banner */}
+      <div className="hidden lg:flex w-1/2 relative bg-zinc-950 p-12 flex-col justify-between overflow-hidden border-l border-border">
+        {/* Subtle mesh/spotlight gradients */}
+        <div className="absolute top-1/4 -right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-md w-full space-y-6 relative z-10">
-          <div className="space-y-2">
-            <span className="text-[10px] font-pixel text-primary uppercase tracking-widest">
-              Zero-Trust Architecture
-            </span>
-            <h2 className="text-2xl font-medium tracking-tight text-foreground">
-              Guaranteed identity verification for operator workspaces.
-            </h2>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Every workspace account requires cryptographic one-time password verification via your official work email before permissions are granted.
-            </p>
+        <div className="relative z-10 flex items-center justify-between">
+          <span className="text-xs font-mono tracking-wider text-primary/80 uppercase">
+            // NEXT-GEN EMBEDDABLE AI AGENT
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-xs text-zinc-400 font-mono">PartyKit Real-Time Edge Ready</span>
           </div>
+        </div>
 
-          <div className="p-4 rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm space-y-3 shadow-lg">
-            <div className="flex items-center gap-2.5 pb-2 border-b border-border/40">
-              <KeyRound className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs font-semibold">Security Handshake</span>
+        {/* Dynamic preview / interactive graphic */}
+        <div className="relative z-10 my-auto py-10">
+          <div className="relative mx-auto max-w-md rounded-2xl border border-white/10 bg-zinc-900/70 backdrop-blur-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-xs">
+                  H
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-100">Live Workspace Setup</h4>
+                  <p className="text-[10px] text-zinc-400">Autonomous support with human-in-the-loop</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                Active
+              </span>
             </div>
-            <ul className="text-xs space-y-2 text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>One-Time Password (OTP) dispatched over secure Neon Auth SMTP</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>Prevents unauthorized account creation & spam bots</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>Direct session establishment with token rotation upon verification</span>
-              </li>
-            </ul>
+
+            <div className="space-y-2 text-xs">
+              <div className="rounded-lg bg-zinc-950/80 p-3 border border-white/5 space-y-1">
+                <span className="text-[10px] text-zinc-500 uppercase font-mono">Zero hallucination guarantee</span>
+                <p className="text-zinc-300 text-xs">
+                  Ingests your knowledge base and strictly grounds responses with confidence scores.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-zinc-950/80 p-3 border border-white/5 space-y-1">
+                <span className="text-[10px] text-zinc-500 uppercase font-mono">Dynamic Questions</span>
+                <p className="text-zinc-300 text-xs">
+                  Suggested prompts automatically populate when you upload documents.
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <div className="relative z-10 text-xs text-zinc-500 flex items-center justify-between">
+          <span>Encrypted with Neon Lakebase Postgres</span>
+          <span>Zero-latency WebSockets</span>
         </div>
       </div>
     </div>
@@ -575,7 +709,13 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen w-full flex items-center justify-center bg-background">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
       <SignupForm />
     </Suspense>
   );

@@ -3,6 +3,8 @@ import { prisma } from "@/server/db";
 import { EmbedClient } from "./client";
 import { UnauthorizedOrigin } from "./unauthorized";
 
+export const dynamic = "force-dynamic";
+
 function isOriginAllowed(requestOrigin: string, allowedEntries: string[]): boolean {
   if (allowedEntries.length === 0) return true;
   if (!requestOrigin) return false;
@@ -87,7 +89,7 @@ export default async function EmbedPage({
     themeMode: "system",
     welcomeMessage: "Hey there! 👋 How can our team or AI assistant help you today?",
     allowHumanEscalation: true,
-    suggestedQuestions: "[\"How do I request a refund?\", \"What are your subscription pricing plans?\", \"What are the API rate limits?\"]",
+    suggestedQuestions: "[]",
   };
 
   try {
@@ -105,7 +107,7 @@ export default async function EmbedPage({
         themeMode: dbSettings.themeMode || settings.themeMode,
         welcomeMessage: dbSettings.welcomeMessage || settings.welcomeMessage,
         allowHumanEscalation: dbSettings.allowHumanEscalation ?? true,
-        suggestedQuestions: dbSettings.suggestedQuestions || settings.suggestedQuestions,
+        suggestedQuestions: dbSettings.suggestedQuestions ?? "[]",
       };
     }
   } catch (e) {
@@ -138,11 +140,11 @@ export default async function EmbedPage({
   }
 
   return (
-    <EmbedClient 
-      workspaceId={workspaceId} 
-      visitorToken={visitor_token} 
-      position={position} 
-      settings={settings} 
+    <EmbedClient
+      workspaceId={workspaceId}
+      visitorToken={visitor_token}
+      position={position}
+      settings={settings}
     />
   );
 }

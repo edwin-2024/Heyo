@@ -20,6 +20,7 @@ model Workspace {
   widgetSettings WidgetSettings?
   conversations  Conversation[]
 
+  @@index([ownerUserId])
   @@map("workspaces")
 }
 
@@ -37,7 +38,7 @@ model WidgetSettings {
   allowHumanEscalation Boolean   @default(true) @map("allow_human_escalation")
   handoffThreshold     Float     @default(0.55) @map("handoff_threshold")
   offlineEmailCapture  Boolean   @default(true) @map("offline_email_capture")
-  suggestedQuestions   String?   @default("[\"How do I request a refund?\", \"What are your subscription pricing plans?\", \"What are the API rate limits?\"]") @map("suggested_questions")
+  suggestedQuestions   String?   @default("[]") @map("suggested_questions")
   allowedDomains       String    @default("http://localhost:5000, http://localhost:3000, https://example.com") @map("allowed_domains")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
@@ -118,4 +119,3 @@ model DocumentChunk {
   @@index([workspaceId])
   @@index([documentId])
 }
-

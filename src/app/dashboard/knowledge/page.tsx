@@ -10,5 +10,10 @@ export default async function KnowledgePage() {
     redirect("/login");
   }
 
+  // Reject unverified users and redirect them to complete their OTP verification
+  if (!(rawSession.user as any).emailVerified) {
+    redirect(`/signup?verify=true&email=${encodeURIComponent(rawSession.user.email || "")}`);
+  }
+
   return <DashboardShell initialTab="knowledge" initialSession={rawSession} />;
 }

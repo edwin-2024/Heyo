@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, KeyRound } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -19,9 +19,11 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUnverified, setIsUnverified] = useState(false);
 
   useEffect(() => {
-    if (session && !isSessionLoading) {
+    const isEmailVerified = Boolean((session?.user as any)?.emailVerified);
+    if (session?.user && isEmailVerified && !isSessionLoading) {
       router.replace("/dashboard");
     }
   }, [session, isSessionLoading, router]);
@@ -48,6 +50,7 @@ function LoginForm() {
 
     setIsLoading(true);
     setErrorMessage(null);
+    setIsUnverified(false);
 
     try {
       const res = await signIn.email({
@@ -60,8 +63,9 @@ function LoginForm() {
           res.error.code === "EMAIL_NOT_VERIFIED" ||
           res.error.message?.toLowerCase().includes("email not verified")
         ) {
+          setIsUnverified(true);
           setErrorMessage(
-            "Email not verified. Please check your inbox for the OTP verification code or re-register to get a fresh code."
+            "Your email address has not been verified yet. Please enter the 6-digit OTP code sent to your email."
           );
         } else if (
           res.error.message?.toLowerCase().includes("invalid email or password") ||
@@ -163,9 +167,19 @@ function LoginForm() {
 
             <CardContent className="space-y-4">
               {errorMessage && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-                  <span>{errorMessage}</span>
+                <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                    <span>{errorMessage}</span>
+                  </div>
+                  {isUnverified && (
+                    <Link
+                      href={`/signup?verify=true&email=${encodeURIComponent(email)}`}
+                      className="inline-flex items-center gap-1.5 font-medium text-xs text-destructive underline hover:opacity-80 pl-6"
+                    >
+                      <KeyRound className="h-3.5 w-3.5" /> Enter 6-digit OTP verification code &rarr;
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -207,14 +221,14 @@ function LoginForm() {
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase tracking-wider">
                   <span className="bg-card px-2.5 text-muted-foreground font-mono">
-                    or continue with email
+                    or with operator credentials
                   </span>
                 </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3.5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs">Work Email</Label>
+                  <Label htmlFor="email" className="text-xs">Email Address</Label>
                   <Input
                     id="email"
                     type="email"
@@ -234,7 +248,7 @@ function LoginForm() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••••••"
+                    placeholder="Enter password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -264,12 +278,12 @@ function LoginForm() {
 
             <CardFooter className="flex flex-col space-y-2 border-t border-border pt-4 text-center">
               <p className="text-xs text-muted-foreground">
-                Don&apos;t have a workspace yet?{" "}
+                Don&apos;t have an account yet?{" "}
                 <Link
                   href="/signup"
                   className="text-foreground hover:underline font-semibold"
                 >
-                  Create one now
+                  Create workspace
                 </Link>
               </p>
             </CardFooter>
@@ -279,85 +293,30 @@ function LoginForm() {
         {/* Footer info */}
         <div className="text-center sm:text-left text-[11px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border/50 pt-4">
           <span>&copy; {new Date().getFullYear()} Heyo Technologies Inc.</span>
-          <span className="font-pixel text-[9px] uppercase tracking-wider text-muted-foreground/80">
-            SECURE NEON TLS 1.3
-          </span>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="hover:text-foreground transition">Privacy</Link>
+            <Link href="/" className="hover:text-foreground transition">Terms</Link>
+            <Link href="/" className="hover:text-foreground transition">Security</Link>
+          </div>
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Cinematic Video Stage & Pixel Font Telemetry */}
-      <div className="hidden lg:flex lg:w-1/2 relative min-h-screen overflow-hidden border-l border-border bg-black items-center justify-center p-12">
-        {/* Looping video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-80"
-          aria-hidden="true"
-        >
-          <source
-            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260818_072341_50851634-bbc3-4c33-9acc-7647d4db44aa.mp4"
-            type="video/mp4"
-          />
-        </video>
+      {/* RIGHT COLUMN: Ambient Architectural Visual */}
+      <div className="hidden lg:flex w-1/2 bg-muted/30 border-l border-border flex-col justify-center items-center p-12 relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Radial vignette scrim overlay */}
-        <div
-          className="absolute inset-0 bg-radial-[circle_at_50%_50%] from-black/20 via-black/60 to-black/90 pointer-events-none"
-          aria-hidden="true"
-        />
-
-        {/* Floating Atmospheric Telemetry Overlay */}
-        <div className="relative z-10 w-full max-w-lg space-y-6">
-          {/* Top Pixel Pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-white/20 backdrop-blur-md shadow-lg">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-pixel text-[11px] text-emerald-300 tracking-wider">
-              HEYO CORE // v1.0 ONLINE
+        <div className="max-w-md w-full space-y-6 relative z-10">
+          <div className="space-y-2">
+            <span className="text-[10px] font-pixel text-primary uppercase tracking-widest">
+              Intercom-Grade Reliability
             </span>
-          </div>
-
-          {/* Editorial Display Heading */}
-          <div className="space-y-3">
-            <h2 className="text-3xl xl:text-4xl font-medium tracking-tight text-white leading-tight">
-              Deploy <span className="font-serif italic text-neutral-300">AI agents</span> grounded in your docs.
+            <h2 className="text-2xl font-medium tracking-tight text-foreground">
+              Real-time messaging, deterministic guardrails.
             </h2>
-            <p className="text-sm text-neutral-300 leading-relaxed max-w-md">
-              Sub-second vector retrieval with Step 3 intent classification and instantaneous PartyKit operator handoffs.
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Log in to review live visitor inquiries, inspect RAG embeddings, or intervene in high-stakes conversations with seamless zero-downtime operator handoff.
             </p>
-          </div>
-
-          {/* Pixel Font Terminal Widget / Telemetry Panel */}
-          <div className="rounded-2xl border border-white/15 bg-black/70 backdrop-blur-xl p-5 space-y-3 shadow-2xl text-xs font-pixel text-neutral-200">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 text-[10px] text-neutral-400">
-              <span className="tracking-widest">// SYSTEM TELEMETRY</span>
-              <span className="text-emerald-400 font-mono">LATENCY &lt; 400MS</span>
-            </div>
-
-            <div className="space-y-1.5 text-[11px] leading-relaxed">
-              <div className="flex justify-between">
-                <span className="text-neutral-400">VECTOR EMBED:</span>
-                <span className="text-cyan-300">384-DIM BGE-SMALL</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">INTENT CLASSIFIER:</span>
-                <span className="text-amber-300">GROQ LLAMA-3.1-8B</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">SYNTHESIS ENGINE:</span>
-                <span className="text-purple-300">LLAMA-3.3-70B</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">HANDOFF GATE:</span>
-                <span className="text-emerald-300">DUAL-GUARDRAIL (&gt;=0.65)</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-neutral-400">
-              <span>STATUS: READY</span>
-              <span className="text-neutral-300">ROOM: default_live</span>
-            </div>
           </div>
         </div>
       </div>
@@ -367,13 +326,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <LoginForm />
     </Suspense>
   );

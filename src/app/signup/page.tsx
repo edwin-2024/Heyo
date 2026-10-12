@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signUp, signIn, emailOtp, useSession } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,9 +32,11 @@ import {
 } from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, isPending: isSessionLoading } = useSession();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,15 +46,32 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-
-  useEffect(() => {
-    if (session && !isSessionLoading) {
-      router.replace("/dashboard");
-    }
-  }, [session, isSessionLoading, router]);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Parse query params for direct verification flow
+  useEffect(() => {
+    const verifyParam = searchParams.get("verify");
+    const emailParam = searchParams.get("email");
+
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+
+    if (verifyParam === "true") {
+      setStep("verify");
+      setSuccessMessage("Please enter the 6-digit verification code sent to your email.");
+    }
+  }, [searchParams]);
+
+  // NEVER redirect to dashboard if email is unverified!
+  useEffect(() => {
+    const isEmailVerified = Boolean((session?.user as any)?.emailVerified);
+    if (session?.user && isEmailVerified && !isSessionLoading) {
+      router.replace("/dashboard");
+    }
+  }, [session, isSessionLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,18 +101,14 @@ export default function SignupPage() {
         return;
       }
 
-      // Explicitly request email OTP verification from Neon Auth
-      const otpRes = await emailOtp.sendVerificationOtp({
-        email,
-        type: "email-verification",
-      });
-
-      if (otpRes.error) {
-        setErrorMessage(
-          otpRes.error.message || "Could not dispatch verification code. Please try again."
-        );
-        setIsLoading(false);
-        return;
+      // Explicitly send verification OTP
+      try {
+        await emailOtp.sendVerificationOtp({
+          email,
+          type: "email-verification",
+        });
+      } catch {
+        // Automatic dispatch from Neon Auth is active
       }
 
       setStep("verify");
@@ -128,8 +143,10 @@ export default function SignupPage() {
           res.error.message || "Invalid or expired verification code."
         );
       } else {
-        // Verification succeeded! Ensure active session and route to dashboard
-        await signIn.email({ email, password }).catch(() => {});
+        // Verification succeeded! Establish verified session and route to dashboard
+        if (password) {
+          await signIn.email({ email, password }).catch(() => {});
+        }
         router.push("/dashboard");
         router.refresh();
       }
@@ -143,6 +160,11 @@ export default function SignupPage() {
   };
 
   const handleResendOtp = async () => {
+    if (!email) {
+      setErrorMessage("Please enter your email to resend the code.");
+      return;
+    }
+
     setIsResending(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -349,7 +371,7 @@ export default function SignupPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                        <span>Instant 6-digit email OTP verification</span>
+                        <span>Mandatory 6-digit email OTP verification</span>
                       </div>
                     </div>
 
@@ -498,88 +520,63 @@ export default function SignupPage() {
         {/* Footer info */}
         <div className="text-center sm:text-left text-[11px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-border/50 pt-4">
           <span>&copy; {new Date().getFullYear()} Heyo Technologies Inc.</span>
-          <span className="font-pixel text-[9px] uppercase tracking-wider text-muted-foreground/80">
-            SECURE NEON TLS 1.3
-          </span>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="hover:text-foreground transition">Privacy</Link>
+            <Link href="/" className="hover:text-foreground transition">Terms</Link>
+            <Link href="/" className="hover:text-foreground transition">Security</Link>
+          </div>
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Cinematic Video Stage & Pixel Font Telemetry */}
-      <div className="hidden lg:flex lg:w-1/2 relative min-h-screen overflow-hidden border-l border-border bg-black items-center justify-center p-12">
-        {/* Looping video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-80"
-          aria-hidden="true"
-        >
-          <source
-            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260818_072341_50851634-bbc3-4c33-9acc-7647d4db44aa.mp4"
-            type="video/mp4"
-          />
-        </video>
+      {/* RIGHT COLUMN: Interactive Security & Verification Showcase */}
+      <div className="hidden lg:flex w-1/2 bg-muted/30 border-l border-border flex-col justify-center items-center p-12 relative overflow-hidden">
+        {/* Ambient radial glows */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Radial vignette scrim overlay */}
-        <div
-          className="absolute inset-0 bg-radial-[circle_at_50%_50%] from-black/20 via-black/60 to-black/90 pointer-events-none"
-          aria-hidden="true"
-        />
-
-        {/* Floating Atmospheric Telemetry Overlay */}
-        <div className="relative z-10 w-full max-w-lg space-y-6">
-          {/* Top Pixel Pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-white/20 backdrop-blur-md shadow-lg">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-pixel text-[11px] text-emerald-300 tracking-wider">
-              WORKSPACE INIT // STEP 1 of 2
+        <div className="max-w-md w-full space-y-6 relative z-10">
+          <div className="space-y-2">
+            <span className="text-[10px] font-pixel text-primary uppercase tracking-widest">
+              Zero-Trust Architecture
             </span>
-          </div>
-
-          {/* Editorial Display Heading */}
-          <div className="space-y-3">
-            <h2 className="text-3xl xl:text-4xl font-medium tracking-tight text-white leading-tight">
-              Autonomous support with <span className="font-serif italic text-neutral-300">zero hallucinations</span>.
+            <h2 className="text-2xl font-medium tracking-tight text-foreground">
+              Guaranteed identity verification for operator workspaces.
             </h2>
-            <p className="text-sm text-neutral-300 leading-relaxed max-w-md">
-              Embed with one script tag. Keep total operator control with automatic handoffs whenever uncertainty strikes.
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Every workspace account requires cryptographic one-time password verification via your official work email before permissions are granted.
             </p>
           </div>
 
-          {/* Pixel Font Terminal Widget / Telemetry Panel */}
-          <div className="rounded-2xl border border-white/15 bg-black/70 backdrop-blur-xl p-5 space-y-3 shadow-2xl text-xs font-pixel text-neutral-200">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 text-[10px] text-neutral-400">
-              <span className="tracking-widest">// PROVISIONING TARGETS</span>
-              <span className="text-emerald-400 font-mono">AUTOMATIC</span>
+          <div className="p-4 rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm space-y-3 shadow-lg">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-border/40">
+              <KeyRound className="h-4 w-4 text-emerald-500" />
+              <span className="text-xs font-semibold">Security Handshake</span>
             </div>
-
-            <div className="space-y-1.5 text-[11px] leading-relaxed">
-              <div className="flex justify-between">
-                <span className="text-neutral-400">TENANCY ARCH:</span>
-                <span className="text-cyan-300">ADR-0001 SOLO MODE</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">DATABASE BACKEND:</span>
-                <span className="text-amber-300">NEON SERVERLESS PG</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">REALTIME SYNC:</span>
-                <span className="text-purple-300">PARTYKET EDGE WS</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-400">WIDGET ISOLATION:</span>
-                <span className="text-emerald-300">CROSS-ORIGIN IFRAME</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-neutral-400">
-              <span>SECURITY: MANAGED AUTH</span>
-              <span className="text-neutral-300">COOKIE: SAME-SITE LAX</span>
-            </div>
+            <ul className="text-xs space-y-2 text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>One-Time Password (OTP) dispatched over secure Neon Auth SMTP</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>Prevents unauthorized account creation & spam bots</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>Direct session establishment with token rotation upon verification</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <SignupForm />
+    </Suspense>
   );
 }

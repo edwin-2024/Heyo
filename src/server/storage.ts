@@ -7,12 +7,12 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const s3 = new S3Client({
-  endpoint: process.env.AWS_ENDPOINT_URL_S3,
+  endpoint: process.env.AWS_ENDPOINT_URL_S3 || "https://br-floral-cell-b32col0z.storage.c-4.ap-southeast-1.aws.neon.tech",
   region: process.env.AWS_REGION || "ap-southeast-1",
   forcePathStyle: true,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "nak_placeholder",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "nsk_placeholder",
   },
   requestChecksumCalculation: "WHEN_REQUIRED",
   responseChecksumValidation: "WHEN_REQUIRED",

@@ -13,11 +13,20 @@ import {
   Check,
   Sidebar,
   FileText,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { FileTypeIcon } from "@/components/dashboard/knowledge/FileTypeIcon";
+import { DocumentChunkViewerDialog } from "@/components/dashboard/knowledge/DocumentChunkViewerDialog";
 import { VisitorAvatar, ChatbotGlassAvatar } from "./VisitorAvatar";
 import { AiReasoningCard } from "./AiReasoningCard";
 import { ConversationItem } from "./types";
@@ -25,6 +34,7 @@ import { cn } from "@/lib/utils";
 
 interface ActiveThreadProps {
   conversation: ConversationItem | null;
+  workspaceId?: string;
   onSendMessage: (conversationId: string, text: string) => void;
   onTakeOver: (conversationId: string) => void;
   onResolve: (conversationId: string) => void;
@@ -38,6 +48,7 @@ interface ActiveThreadProps {
 
 export function ActiveThread({
   conversation,
+  workspaceId,
   onSendMessage,
   onTakeOver,
   onResolve,
@@ -49,6 +60,7 @@ export function ActiveThread({
   onToggleAgent,
 }: ActiveThreadProps) {
   const [inputText, setInputText] = useState("");
+  const [viewerTarget, setViewerTarget] = useState<{ id?: string; fileName?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of thread when messages update
@@ -151,79 +163,108 @@ export function ActiveThread({
 
         {/* Right: Actions (AI Toggle, Takeover, Resolve, Inspector Toggle, and Deselect) */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* AI Agent Toggle Button */}
-          {conversation.status !== "CLOSED" && (
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => onToggleAgent?.(conversation.id, conversation.status !== "AI_ANSWERING")}
-              className={cn(
-                "h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5 transition-colors cursor-pointer",
-                conversation.status === "AI_ANSWERING"
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-              )}
-              title={
-                conversation.status === "AI_ANSWERING"
-                  ? "AI Agent is Active: Click to pause AI"
-                  : "AI Agent is Paused: Click to enable AI"
-              }
-            >
-              <Bot className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">
-                Agent: {conversation.status === "AI_ANSWERING" ? "ON" : "OFF"}
-              </span>
-            </Button>
-          )}
+          <TooltipProvider delayDuration={150}>
+            {/* AI Agent Toggle Button */}
+            {conversation.status !== "CLOSED" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => onToggleAgent?.(conversation.id, conversation.status !== "AI_ANSWERING")}
+                    className={cn(
+                      "h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5 transition-colors cursor-pointer",
+                      conversation.status === "AI_ANSWERING"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                    )}
+                  >
+                    <Bot className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">
+                      Agent: {conversation.status === "AI_ANSWERING" ? "ON" : "OFF"}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {conversation.status === "AI_ANSWERING"
+                    ? "Pause autonomous AI agent"
+                    : "Resume autonomous AI agent"}
+                </TooltipContent>
+              </Tooltip>
+            )}
 
-          {conversation.status === "WAITING_HUMAN" && (
-            <Button
-              size="sm"
-              onClick={() => onTakeOver(conversation.id)}
-              className="h-8 px-2.5 rounded-lg text-xs font-semibold gap-1.5"
-              title="Take over conversation"
-            >
-              <UserCheck className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Take over</span>
-            </Button>
-          )}
+            {/* Take Over Button */}
+            {conversation.status === "WAITING_HUMAN" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    onClick={() => onTakeOver(conversation.id)}
+                    className="h-8 px-2.5 rounded-lg text-xs font-semibold gap-1.5 cursor-pointer"
+                  >
+                    <UserCheck className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Take over</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Take over conversation as live operator</TooltipContent>
+              </Tooltip>
+            )}
 
-          {conversation.status !== "CLOSED" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onResolve(conversation.id)}
-              className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5 bg-muted/50 hover:bg-muted"
-              title="Mark conversation as resolved"
-            >
-              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="hidden md:inline">Resolve</span>
-            </Button>
-          )}
+            {/* Resolve Button */}
+            {conversation.status !== "CLOSED" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onResolve(conversation.id)}
+                    className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1.5 bg-muted/50 hover:bg-muted cursor-pointer"
+                  >
+                    <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="hidden md:inline">Resolve</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Mark conversation as resolved</TooltipContent>
+              </Tooltip>
+            )}
 
-          <Button
-            variant="iconRound"
-            size="icon"
-            onClick={onToggleInspector}
-            title={showInspector ? "Hide visitor details panel" : "Show visitor details panel"}
-          >
-            <Sidebar className="h-4 w-4" />
-          </Button>
+            {/* Visitor Details Inspector Toggle Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="iconRound"
+                  size="icon"
+                  onClick={onToggleInspector}
+                  className="cursor-pointer"
+                  aria-label="Toggle visitor details panel"
+                >
+                  <Sidebar className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {showInspector ? "Hide visitor details panel" : "Show visitor details panel"}
+              </TooltipContent>
+            </Tooltip>
 
-          {/* Deselect thread button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCloseThread}
-            className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1 ml-1"
-            title="Deselect active thread (Esc)"
-          >
-            <span className="hidden sm:inline">Deselect</span>
-            <kbd className="hidden lg:inline text-[10px] font-mono text-muted-foreground/80 px-1 py-0.2 rounded bg-muted/60 border border-border">
-              Esc
-            </kbd>
-          </Button>
+            {/* Deselect Thread Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCloseThread}
+                  className="h-8 px-2.5 rounded-lg text-xs font-medium gap-1 ml-1 cursor-pointer"
+                >
+                  <span className="hidden sm:inline">Deselect</span>
+                  <kbd className="hidden lg:inline text-[10px] font-mono text-muted-foreground/80 px-1 py-0.2 rounded bg-muted/60 border border-border">
+                    Esc
+                  </kbd>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Deselect active thread (Esc)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -306,34 +347,114 @@ export function ActiveThread({
                   </div>
                 )}
 
-                {/* AI Answer Bubble matching reference image (rounded bubble with ChatbotGlassAvatar) */}
-                {isAi && (
-                  <div className="relative flex items-start gap-3">
-                    <div className="flex-1 space-y-2">
-                      <div className="rounded-2xl px-5 py-4 bg-muted/60 dark:bg-card border border-border text-xs text-foreground leading-relaxed shadow-xs space-y-3">
-                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                {/* AI Answer Bubble with distinct border, high contrast, and Grounding Sources */}
+                {isAi && (() => {
+                  const rawSources =
+                    msg.metadata?.sources ||
+                    (msg.metadata?.retrievedChunks
+                      ? msg.metadata.retrievedChunks
+                          .filter((c: any) => c.status === "USED" || c.similarity >= 0.5)
+                          .map((c: any) => ({
+                            documentId: c.documentId,
+                            documentName: c.documentName,
+                            similarity: Math.round(c.similarity * 100),
+                            snippet: c.excerpt,
+                          }))
+                      : []) ||
+                    (msg.citation ? [{ documentName: msg.citation.documentName, similarity: msg.citation.similarity ? Math.round(msg.citation.similarity * 100) : undefined }] : []);
+
+                  // Deduplicate sources by document, displaying highest match percentage per file
+                  const sourcesMap = new Map<string, any>();
+                  for (const s of (rawSources as any[])) {
+                    const key = s.documentName || s.documentId || "doc";
+                    const existing = sourcesMap.get(key);
+                    if (!existing || (s.similarity ?? 0) > (existing.similarity ?? 0)) {
+                      sourcesMap.set(key, s);
+                    }
+                  }
+                  const sources = Array.from(sourcesMap.values());
+
+                  return (
+                    <div className="relative flex items-start gap-3 my-1">
+                      <div className="flex-1 space-y-2">
+                        {/* High-contrast AI container with distinct border styling */}
+                        <div className="rounded-2xl px-5 py-4 bg-indigo-500/[0.04] dark:bg-zinc-900 border-2 border-indigo-500/40 dark:border-indigo-500/50 text-xs text-foreground leading-relaxed shadow-xs space-y-3">
+                          {/* AI Agent Header badge */}
+                          <div className="flex items-center justify-between pb-2 border-b border-indigo-500/15 dark:border-indigo-500/25">
+                            <div className="flex items-center gap-1.5 font-semibold text-[11px] text-indigo-600 dark:text-indigo-400">
+                              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                              <span>Heyo AI Agent</span>
+                              <span className="font-normal opacity-70 text-[10px]">· Grounded Synthesis</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-muted-foreground">{msg.createdAt}</span>
+                          </div>
+
+                          <p className="whitespace-pre-wrap leading-relaxed text-foreground">{msg.text}</p>
+
+                          {/* Grounding Sources used in this answer */}
+                          {sources.length > 0 && (
+                            <div className="pt-2.5 mt-2 border-t border-indigo-500/15 dark:border-indigo-500/25 space-y-1.5">
+                              <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
+                                <FileText className="h-3 w-3 text-indigo-500 shrink-0" />
+                                <span>Grounding Sources ({sources.length} document{sources.length > 1 ? "s" : ""}):</span>
+                              </div>
+                              <div className="flex items-center flex-wrap gap-1.5">
+                                {sources.map((src: any, idx: number) => (
+                                  <TooltipProvider key={idx} delayDuration={150}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setViewerTarget({
+                                              id: src.documentId,
+                                              fileName: src.documentName,
+                                            });
+                                          }}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 dark:bg-indigo-950/50 border border-indigo-500/30 hover:border-indigo-500/70 hover:bg-indigo-500/20 active:scale-[0.97] transition-colors text-[11px] text-foreground font-mono cursor-pointer group"
+                                        >
+                                          <FileTypeIcon fileName={src.documentName} size="sm" />
+                                          <span className="font-semibold text-foreground truncate max-w-[200px] group-hover:underline">
+                                            {src.documentName}
+                                          </span>
+                                          {src.similarity !== undefined && (
+                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded border border-emerald-500/20">
+                                              {src.similarity}% match
+                                            </span>
+                                          )}
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-xs text-xs">
+                                        <p className="font-semibold">Click to inspect chunks for {src.documentName}</p>
+                                        {src.snippet && (
+                                          <p className="text-[10px] opacity-80 mt-1 line-clamp-2">"{src.snippet}..."</p>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {msg.citation && (
-                        <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground mt-1.5 pr-1">
-                          <span>Answered from</span>
-                          <span className="inline-flex items-center gap-1 font-mono text-foreground font-medium">
-                            <FileText className="h-3 w-3 text-primary" />
-                            {msg.citation.documentName}
-                          </span>
-                        </div>
-                      )}
+                      {/* Chatbot Glass 3D Avatar Orb on the right */}
+                      <ChatbotGlassAvatar size="md" className="mt-1 shrink-0" />
                     </div>
+                  );
+                })()}
 
-                    {/* Chatbot Glass 3D Avatar Orb on the right (matching reference image) */}
-                    <ChatbotGlassAvatar size="md" className="mt-1 shrink-0" />
-                  </div>
-                )}
-
-                {/* Operator Response Bubble */}
+                {/* Operator Response Bubble (Differentiated clearly with human header and accent) */}
                 {isOperator && (
-                  <div className="self-end rounded-2xl rounded-tr-xs px-4 py-3 bg-primary text-primary-foreground text-xs leading-relaxed max-w-xl shadow-xs">
-                    {msg.text}
+                  <div className="flex flex-col items-end gap-1 my-1">
+                    <div className="flex items-center gap-1 text-[11px] font-medium text-purple-600 dark:text-purple-400 pr-1">
+                      <User className="h-3 w-3" />
+                      <span>You (Operator Response) · {msg.createdAt}</span>
+                    </div>
+                    <div className="self-end rounded-2xl rounded-tr-xs px-4 py-3 bg-primary text-primary-foreground text-xs leading-relaxed max-w-xl shadow-xs border border-primary/20">
+                      {msg.text}
+                    </div>
                   </div>
                 )}
               </div>
@@ -399,6 +520,19 @@ export function ActiveThread({
           </div>
         </div>
       </div>
+
+      {/* Document Chunk Viewer Modal */}
+      {workspaceId && (
+        <DocumentChunkViewerDialog
+          open={!!viewerTarget}
+          onOpenChange={(open) => {
+            if (!open) setViewerTarget(null);
+          }}
+          workspaceId={workspaceId}
+          documentId={viewerTarget?.id}
+          fileName={viewerTarget?.fileName}
+        />
+      )}
     </div>
   );
 }

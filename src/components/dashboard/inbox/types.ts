@@ -33,6 +33,12 @@ export interface MessageCitation {
   similarity?: number;
 }
 
+export interface GroundingSource {
+  documentName: string;
+  similarity?: number;
+  snippet?: string;
+}
+
 export interface ConversationMessage {
   id: string;
   conversationId: string;
@@ -42,6 +48,17 @@ export interface ConversationMessage {
   createdAt: string;
   citation?: MessageCitation;
   aiReasoning?: AiReasoning;
+  metadata?: {
+    model?: string;
+    topSimilarity?: number;
+    sources?: GroundingSource[];
+    retrievedChunks?: Array<{
+      documentName: string;
+      similarity: number;
+      status: string;
+    }>;
+    [key: string]: any;
+  };
 }
 
 export interface VisitorProfile {

@@ -35,8 +35,9 @@ model WidgetSettings {
   customAvatarUrl      String?   @default("") @map("custom_avatar_url")
   welcomeMessage       String    @default("Hey there! 👋 How can our team or AI assistant help you today?") @map("welcome_message")
   allowHumanEscalation Boolean   @default(true) @map("allow_human_escalation")
-  handoffThreshold     Float     @default(0.65) @map("handoff_threshold")
+  handoffThreshold     Float     @default(0.55) @map("handoff_threshold")
   offlineEmailCapture  Boolean   @default(true) @map("offline_email_capture")
+  suggestedQuestions   String?   @default("[\"How do I request a refund?\", \"What are your subscription pricing plans?\", \"What are the API rate limits?\"]") @map("suggested_questions")
   allowedDomains       String    @default("http://localhost:5000, http://localhost:3000, https://example.com") @map("allowed_domains")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
@@ -80,13 +81,41 @@ model Message {
   @@map("messages")
 }
 
-model DocumentChunk {
-  id          String                      @id @default(cuid())
-  workspaceId String                      @map("workspace_id")
-  content     String
-  embedding   Unsupported("vector(384)")?
-  createdAt   DateTime                    @default(now()) @map("created_at")
+model Document {
+  id          String         @id @default(cuid())
+  workspaceId String
+  fileName    String
+  storagePath String
+  fileSize    Int
+  contentType String
+  status      DocumentStatus @default(PROCESSING)
+  chunksCount Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  chunks      DocumentChunk[]
 
   @@index([workspaceId])
-  @@map("document_chunks")
 }
+
+enum DocumentStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+}
+
+model DocumentChunk {
+  id          String                      @id @default(cuid())
+  workspaceId String
+  documentId  String
+  document    Document                    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex  Int
+  content     String                      @db.Text
+  embedding   Unsupported("vector(384)")?
+  tokenCount  Int
+  createdAt   DateTime                    @default(now())
+
+  @@index([workspaceId])
+  @@index([documentId])
+}
+

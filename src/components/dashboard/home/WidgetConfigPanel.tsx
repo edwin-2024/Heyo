@@ -14,6 +14,12 @@ import {
   Info,
   Loader2,
   ExternalLink,
+  Plus,
+  Trash2,
+  X,
+  ChevronDown,
+  ChevronUp,
+  MessageSquareQuote,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +49,50 @@ export function WidgetConfigPanel({ settings, onChange }: WidgetConfigPanelProps
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+  const [newQuestionInput, setNewQuestionInput] = useState("");
+  const [isAdvancedGuardrailsOpen, setIsAdvancedGuardrailsOpen] = useState(false);
+
+  const suggestedQuestionsList: string[] = React.useMemo(() => {
+    try {
+      if (!settings.suggestedQuestions) return [];
+      const parsed = JSON.parse(settings.suggestedQuestions);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [settings.suggestedQuestions]);
+
+  const handleAddQuestion = (q?: string) => {
+    const text = (q || newQuestionInput).trim();
+    if (!text) return;
+    if (suggestedQuestionsList.includes(text)) return;
+    const updated = [...suggestedQuestionsList, text];
+    onChange({
+      ...settings,
+      suggestedQuestions: JSON.stringify(updated),
+    });
+    if (!q) setNewQuestionInput("");
+  };
+
+  const handleRemoveQuestion = (indexToRemove: number) => {
+    const updated = suggestedQuestionsList.filter((_, idx) => idx !== indexToRemove);
+    onChange({
+      ...settings,
+      suggestedQuestions: JSON.stringify(updated),
+    });
+  };
+
+  const handleResetDefaultQuestions = () => {
+    const defaults = [
+      "How do I request a refund?",
+      "What are your subscription pricing plans?",
+      "What are the API rate limits?",
+    ];
+    onChange({
+      ...settings,
+      suggestedQuestions: JSON.stringify(defaults),
+    });
+  };
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
   const snippetCode = `<script\n  src="${origin}/widget.js"\n  data-workspace="${settings.workspaceId}"\n  data-position="${settings.position}"\n  async\n></script>`;
@@ -154,6 +204,22 @@ export function WidgetConfigPanel({ settings, onChange }: WidgetConfigPanelProps
                 className="h-9 text-xs"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="welcomeMessage" className="text-xs font-medium text-foreground">
+              Welcome Greeting Message
+            </Label>
+            <Input
+              id="welcomeMessage"
+              value={settings.welcomeMessage}
+              onChange={(e) => onChange({ ...settings, welcomeMessage: e.target.value })}
+              placeholder="e.g. Hey there! 👋 How can our team or AI assistant help you today?"
+              className="h-9 text-xs"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              The initial greeting displayed to visitors when they first open the chat widget.
+            </p>
           </div>
 
           {/* Bot Avatar Selector & Custom Upload */}
@@ -442,76 +508,126 @@ export function WidgetConfigPanel({ settings, onChange }: WidgetConfigPanelProps
         </CardContent>
       </Card>
 
-      {/* 2. Behavior & Guardrails */}
+      {/* 2. Suggested Questions & Quick Prompts */}
       <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-semibold">Suggested Questions & Quick Prompts</CardTitle>
+                <CardDescription className="text-xs">
+                  Prompt chips displayed to visitors on new chats to guide common inquiries.
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetDefaultQuestions}
+              className="h-7 text-[11px] font-medium text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform cursor-pointer"
+            >
+              Reset Defaults
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3.5 pt-0">
+          {/* Add question form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAddQuestion();
+            }}
+            className="flex items-center gap-2"
+          >
+            <div className="relative flex-1">
+              <Input
+                placeholder="Type a suggested question (e.g. What is your refund policy?)"
+                value={newQuestionInput}
+                onChange={(e) => setNewQuestionInput(e.target.value)}
+                className="h-9 text-xs pr-8"
+              />
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!newQuestionInput.trim()}
+              className="h-9 px-3 text-xs gap-1 cursor-pointer active:scale-[0.97] transition-transform"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add</span>
+            </Button>
+          </form>
+
+          {/* List of active suggested questions chips */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider font-mono">
+                Active Prompts ({suggestedQuestionsList.length})
+              </span>
+              {suggestedQuestionsList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...settings, suggestedQuestions: "[]" })}
+                  className="text-[11px] text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            {suggestedQuestionsList.length === 0 ? (
+              <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground space-y-1">
+                <p>No suggested questions configured yet.</p>
+                <p className="text-[11px]">
+                  Visitors will see only the open text box. Click &ldquo;Reset Defaults&rdquo; above to load sample questions.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {suggestedQuestionsList.map((q, idx) => (
+                  <div
+                    key={idx}
+                    className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 text-xs font-normal text-foreground transition-all shadow-2xs"
+                  >
+                    <span className="leading-snug">{q}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQuestion(idx)}
+                      className="text-muted-foreground hover:text-destructive rounded-full p-0.5 hover:bg-background/80 transition cursor-pointer active:scale-90"
+                      aria-label={`Remove suggested question ${q}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. Escalation & Guardrails */}
+      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs">
+        <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Shield className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold">Behavior & Guardrails</CardTitle>
+              <CardTitle className="text-base font-semibold">Escalation & Guardrails</CardTitle>
               <CardDescription className="text-xs">
-                Configure greeting messages, handoff thresholds, and human fallback triggers.
+                Configure human operator handoff rules and autonomous boundaries.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <div className="space-y-1.5">
-            <Label htmlFor="welcomeMessage" className="text-xs font-medium text-foreground">
-              Welcome Greeting Message
-            </Label>
-            <Input
-              id="welcomeMessage"
-              value={settings.welcomeMessage}
-              onChange={(e) => onChange({ ...settings, welcomeMessage: e.target.value })}
-              placeholder="Hey there! How can we help?"
-              className="h-9 text-xs"
-            />
-          </div>
-
-          {/* Handoff Similarity Threshold Slider */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-muted/40 border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Sliders className="h-3.5 w-3.5 text-muted-foreground" />
-                <Label htmlFor="threshold" className="text-xs font-semibold text-foreground">
-                  Auto-Handoff Similarity Threshold
-                </Label>
-              </div>
-              <span className="text-xs font-mono font-bold text-primary">
-                {settings.handoffThreshold.toFixed(2)}
-              </span>
-            </div>
-            <input
-              id="threshold"
-              type="range"
-              min="0.50"
-              max="0.90"
-              step="0.01"
-              value={settings.handoffThreshold}
-              onChange={(e) =>
-                onChange({ ...settings, handoffThreshold: parseFloat(e.target.value) })
-              }
-              className="w-full accent-primary cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>0.50 (Permissive)</span>
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                0.65 (PRD ADR-0003 Default)
-              </span>
-              <span>0.90 (Strict)</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
-              If chunk cosine similarity drops below{" "}
-              <strong className="text-foreground">{settings.handoffThreshold.toFixed(2)}</strong>, the AI
-              will bypass LLM generation and hand off to <code className="text-primary font-mono text-[10px]">WAITING_HUMAN</code>.
-            </p>
-          </div>
-
-          {/* Toggle Switches */}
-          <div className="space-y-3 pt-1">
+        <CardContent className="space-y-3.5 pt-0">
+          {/* Toggles */}
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/80">
               <div className="space-y-0.5 pr-2">
                 <span className="text-xs font-semibold text-foreground block">
@@ -568,131 +684,72 @@ export function WidgetConfigPanel({ settings, onChange }: WidgetConfigPanelProps
               </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* 3. Knowledge Base & Grounding Document Ingestion (PRD Flow A) */}
-      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs overflow-hidden">
-        <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <Sparkles className="h-4 w-4" />
+          {/* Collapsible Advanced AI Guardrails Tuning */}
+          <div className="rounded-xl border border-border/80 overflow-hidden bg-muted/20 transition-all">
+            <button
+              type="button"
+              onClick={() => setIsAdvancedGuardrailsOpen(!isAdvancedGuardrailsOpen)}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                <Sliders className="h-3.5 w-3.5 text-primary" />
+                <span className="font-semibold text-foreground">Advanced AI Guardrail Tuning</span>
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  (Threshold: {settings.handoffThreshold.toFixed(2)})
+                </span>
               </div>
-              <div>
-                <CardTitle className="text-base font-semibold">Knowledge Base Ingestion</CardTitle>
-                <CardDescription className="text-xs">
-                  Upload support docs, guides, and policies to ground your AI agent (Flow A).
-                </CardDescription>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <span className="text-[11px]">{isAdvancedGuardrailsOpen ? "Hide" : "Customize"}</span>
+                {isAdvancedGuardrailsOpen ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
               </div>
-            </div>
-            <Badge variant="outline" className="text-[10px] font-mono py-0.5 px-2 bg-background border-border">
-              vector(384)
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          {/* Drag & Drop Zone */}
-          <div className="relative group border-2 border-dashed border-border/80 hover:border-primary/50 transition-colors rounded-xl p-6 text-center bg-muted/20 hover:bg-muted/30 cursor-pointer">
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.md,.txt"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              onChange={(e) => {
-                if (e.target.files?.length) {
-                  // Handled interactively or simulated
-                }
-              }}
-            />
-            <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
-              <div className="h-10 w-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground group-hover:scale-105 group-hover:text-primary transition-all shadow-xs">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.75}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-foreground">
-                  Click or drag documents to upload
+            </button>
+
+            {isAdvancedGuardrailsOpen && (
+              <div className="p-3.5 border-t border-border/80 space-y-2.5 bg-background/50 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="threshold" className="text-xs font-semibold text-foreground">
+                    Auto-Handoff Similarity Threshold
+                  </Label>
+                  <span className="text-xs font-mono font-bold text-primary">
+                    {settings.handoffThreshold.toFixed(2)}
+                  </span>
+                </div>
+                <input
+                  id="threshold"
+                  type="range"
+                  min="0.40"
+                  max="0.90"
+                  step="0.01"
+                  value={settings.handoffThreshold}
+                  onChange={(e) =>
+                    onChange({ ...settings, handoffThreshold: parseFloat(e.target.value) })
+                  }
+                  className="w-full accent-primary cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>0.40 (Permissive)</span>
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    0.55 (Recommended)
+                  </span>
+                  <span>0.90 (Strict)</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+                  When top vector similarity drops below{" "}
+                  <strong className="text-foreground">{settings.handoffThreshold.toFixed(2)}</strong>, the AI
+                  gracefully connects the visitor to a human operator (<code className="text-primary font-mono text-[10px]">WAITING_HUMAN</code>) to prevent hallucinated answers.
                 </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Supports <span className="font-mono text-foreground">.pdf</span>, <span className="font-mono text-foreground">.md</span>, <span className="font-mono text-foreground">.txt</span> up to 10MB each
-                </p>
               </div>
-              <div className="flex items-center gap-1.5 pt-1 text-[10px] font-mono text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Auto-chunked (500 tokens) · Neon Object Storage presigned sync</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sample Active Indexed Documents */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-medium text-foreground">
-              <span>Indexed Documents (3 active)</span>
-              <span className="text-[11px] text-muted-foreground font-mono">1,420 vectors</span>
-            </div>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-7 w-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-mono text-[10px] font-bold">
-                    MD
-                  </div>
-                  <div className="truncate">
-                    <p className="font-semibold text-foreground truncate text-xs">api-reference.md</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">48 chunks · 42KB · 384d embedded</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
-                  Grounded
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-7 w-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-mono text-[10px] font-bold">
-                    PDF
-                  </div>
-                  <div className="truncate">
-                    <p className="font-semibold text-foreground truncate text-xs">billing-and-refunds.pdf</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">22 chunks · 185KB · 384d embedded</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
-                  Grounded
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-mono text-[10px] font-bold">
-                    TXT
-                  </div>
-                  <div className="truncate">
-                    <p className="font-semibold text-foreground truncate text-xs">security-faqs.txt</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">14 chunks · 12KB · 384d embedded</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
-                  Grounded
-                </Badge>
-              </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* 4. Embed Code & Allowed Domains */}
+      {/* 3. Embed Code & Allowed Domains */}
       <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs overflow-hidden">
         <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
           <div className="flex items-center gap-2">
@@ -815,11 +872,37 @@ export function WidgetConfigPanel({ settings, onChange }: WidgetConfigPanelProps
               id="allowedDomains"
               value={settings.allowedDomains}
               onChange={(e) => onChange({ ...settings, allowedDomains: e.target.value })}
-              placeholder="https://example.com, localhost:3000"
+              placeholder="http://localhost:3000, http://localhost:4000, https://example.com"
               className="h-9 text-xs font-mono"
             />
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+              <span className="text-[10px] text-muted-foreground font-mono">Quick add:</span>
+              {["localhost:3000", "localhost:4000", "localhost:5000"].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    const current = settings.allowedDomains
+                      .split(",")
+                      .map((d) => d.trim())
+                      .filter(Boolean);
+                    if (!current.includes(preset)) {
+                      onChange({
+                        ...settings,
+                        allowedDomains:
+                          current.length > 0 ? `${settings.allowedDomains}, ${preset}` : preset,
+                      });
+                    }
+                  }}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/80 hover:bg-muted border border-border text-foreground transition-colors cursor-pointer"
+                >
+                  + {preset}
+                </button>
+              ))}
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Comma-separated origins permitted to embed and run this workspace&apos;s widget.
+              Comma-separated origins permitted to embed and run this workspace&apos;s widget. Localhost ports are safe and enabled for development; add your live domain before deploying.
             </p>
           </div>
         </CardContent>

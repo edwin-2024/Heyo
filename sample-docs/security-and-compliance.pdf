@@ -1,0 +1,78 @@
+%PDF-1.4
+1 0 obj
+<<
+  /Type /Catalog
+  /Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+  /Type /Pages
+  /Kids [3 0 R]
+  /Count 1
+>>
+endobj
+3 0 obj
+<<
+  /Type /Page
+  /Parent 2 0 R
+  /MediaBox [0 0 612 792]
+  /Resources <<
+    /Font <<
+      /F1 <<
+        /Type /Font
+        /Subtype /Type1
+        /BaseFont /Helvetica
+      >>
+    >>
+  >>
+  /Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+  /Length 1376
+>>
+stream
+BT
+/F1 12 Tf
+50 750 Td
+16 TL
+(Heyo Cloud Security, Compliance and Privacy Whitepaper) ' 
+() ' 
+(1. SOC 2 Type II Certification) ' 
+(Heyo Cloud is fully SOC 2 Type II certified by an independent AICPA-accredited auditor.) ' 
+(Our annual audit report covers Security, Confidentiality, and Availability trust service criteria.) ' 
+(Customers on Enterprise plans can request our current SOC 2 report under NDA via security@heyo.so.) ' 
+() ' 
+(2. Data Encryption Standards) ' 
+(Data in Transit: All incoming and outgoing network traffic is encrypted using TLS 1.3 with AES-256 GCM.) ' 
+(Data at Rest: All visitor messages, conversation logs, and uploaded knowledge base documents) ' 
+(are stored in Neon Postgres and Neon Object Storage with AES-256 disk-level encryption.) ' 
+() ' 
+(3. GDPR & CCPA Compliance) ' 
+(Heyo acts as a Data Processor under GDPR. Workspace owners are Data Controllers.) ' 
+(We provide automated Data Subject Request \(DSR\) workflows for right-to-be-forgotten and data export.) ' 
+(Visitor conversation histories are automatically retained for 90 days by default, customizable in settings.) ' 
+() ' 
+(4. Incident Response & 24/7 Security Operations) ' 
+(Our dedicated security operations center monitors system telemetry around the clock.) ' 
+(In the event of a confirmed security incident, Heyo notifies affected workspace owners within 24 hours.) ' 
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000300 00000 n 
+trailer
+<<
+  /Size 5
+  /Root 1 0 R
+>>
+startxref
+1776
+%%EOF

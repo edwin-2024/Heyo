@@ -37,6 +37,16 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
   const [inputVal, setInputVal] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [statusState, setStatusState] = useState<"AI_ANSWERING" | "WAITING_HUMAN" | "HUMAN_ACTIVE">("AI_ANSWERING");
+
+  const dynamicSuggestedQuestions: string[] = React.useMemo(() => {
+    try {
+      if (!settings.suggestedQuestions) return [];
+      const parsed = JSON.parse(settings.suggestedQuestions);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [settings.suggestedQuestions]);
   
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -263,13 +273,13 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
         {/* Floating Chat Widget Simulator (Positioned based on settings.position) */}
         <div
           className={cn(
-            "relative z-20 flex flex-col p-4 md:p-6 mt-auto max-w-full transition-all duration-300",
+            "relative z-20 flex flex-col p-2 sm:p-4 md:p-6 mt-auto w-full max-w-full transition-all duration-300",
             settings.position === "left" ? "items-start self-start" : "items-end self-end"
           )}
         >
           {isOpen ? (
             <div
-              className={`w-[360px] max-w-[calc(100vw-2rem)] h-[490px] rounded-2xl border border-white/15 dark:border-white/10 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 backdrop-blur-xl ${
+              className={`w-full sm:w-[360px] max-w-full h-[460px] sm:h-[490px] rounded-2xl border border-white/15 dark:border-white/10 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 backdrop-blur-xl ${
                 isDarkMode ? "bg-zinc-950/95 text-zinc-100" : "bg-card/95 text-card-foreground"
               }`}
             >
@@ -454,6 +464,35 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                 )}
               </div>
 
+              {/* Dynamic Suggested Question Chips (matches embed widget on new conversation) */}
+              {dynamicSuggestedQuestions.length > 0 &&
+                messages.filter((m) => m.sender === "visitor").length === 0 && (
+                  <div
+                    className={cn(
+                      "px-3 py-2 border-t flex flex-col gap-1.5 shrink-0 animate-in fade-in duration-200",
+                      isDarkMode ? "bg-zinc-950/90 border-zinc-800" : "bg-muted/30 border-border/70"
+                    )}
+                  >
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                      <Sparkles className="h-3 w-3 text-sky-500" />
+                      <span>Suggested Prompts</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {dynamicSuggestedQuestions.map((q, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSendMessage(q)}
+                          disabled={isTyping}
+                          className="text-left text-[11px] px-2.5 py-1 rounded-xl border border-border/80 bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary active:scale-[0.97] transition-all cursor-pointer shadow-2xs leading-tight text-foreground disabled:opacity-50"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               {/* Sample Guardrail Quick Buttons */}
               <div className="px-3 py-1.5 border-t border-border/60 bg-muted/20 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
                 <span className="text-[10px] font-semibold text-muted-foreground shrink-0 uppercase font-pixel text-[9px]">
@@ -466,7 +505,7 @@ export function WidgetSimulator({ settings }: WidgetSimulatorProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handleSendMessage(p.query)}
-                    className="shrink-0 h-6 px-2 py-0 text-[10px] font-normal cursor-pointer"
+                    className="shrink-0 h-6 px-2 py-0 text-[10px] font-normal cursor-pointer active:scale-[0.97] transition-transform"
                   >
                     {p.label}
                   </Button>

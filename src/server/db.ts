@@ -27,3 +27,19 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+/**
+ * Ensures the HNSW cosine index exists on DocumentChunk.
+ * Idempotent: safe to run repeatedly across environments.
+ */
+export async function ensureHnswIndex(): Promise<void> {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "DocumentChunk_embedding_hnsw_idx"
+      ON "DocumentChunk"
+      USING hnsw (embedding vector_cosine_ops);
+    `);
+  } catch (error) {
+    console.error("[DB] ensureHnswIndex warning:", error);
+  }
+}

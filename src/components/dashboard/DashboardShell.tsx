@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import usePartySocket from "partysocket/react";
 import { signOut, useSession } from "@/lib/auth/client";
 import {
   Home,
@@ -17,6 +18,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   User,
+  BookOpen,
 } from "lucide-react";
 import { EditProfileModal } from "@/components/dashboard/EditProfileModal";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -36,10 +38,11 @@ import {
 } from "@/components/ui/tooltip";
 import { LiveInbox } from "@/components/dashboard/inbox/LiveInbox";
 import { HomeDashboardOverview } from "@/components/dashboard/home/HomeDashboardOverview";
+import { KnowledgeBaseView } from "@/components/dashboard/knowledge/KnowledgeBaseView";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/lib/orpc";
 
-export type NavTab = "home" | "inbox";
+export type NavTab = "home" | "inbox" | "knowledge";
 
 interface DashboardShellProps {
   children?: React.ReactNode;
@@ -75,36 +78,82 @@ export function DashboardShell({
   }>({});
 
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [workspaceName, setWorkspaceName] = useState<string>("My Workspace");
+  const [workspaceId, setWorkspaceId] = useState<string>("");
 
-  // Sync unread / waiting inbox conversation count
+  // Sync unread / waiting inbox conversation count and workspace name
+  const refreshWaitingCount = useCallback((wsId: string) => {
+    if (!wsId) return;
+    orpc.conversation
+      .listConversations({ workspaceId: wsId })
+      .then((list) => {
+        if (!list) return;
+        // User rule: Only alert when a customer is actually asking for a human (WAITING_HUMAN)
+        const waiting = list.filter((c) => c.status === "WAITING_HUMAN").length;
+        setUnreadCount(waiting);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     orpc.workspace
       .getWorkspace()
       .then(async (ws) => {
         if (!mounted || !ws?.id) return;
-        try {
-          const list = await orpc.conversation.listConversations({ workspaceId: ws.id });
-          if (!mounted || !list) return;
-          const waiting = list.filter((c) => c.status === "WAITING_HUMAN" || c.status === "AI_ANSWERING").length;
-          setUnreadCount(waiting);
-        } catch {
-          // ignore
+        setWorkspaceId(ws.id);
+        if (ws.name) {
+          setWorkspaceName(ws.name);
+        } else if (ws.widgetSettings?.brandTitle) {
+          setWorkspaceName(ws.widgetSettings.brandTitle);
         }
+        refreshWaitingCount(ws.id);
       })
       .catch(() => {});
 
     return () => {
       mounted = false;
     };
-  }, [activeTab]);
+  }, [activeTab, refreshWaitingCount]);
+
+  // Connect to PartyKit Edge Room for real-time inbox alerts
+  usePartySocket({
+    host: process.env.NEXT_PUBLIC_PARTYKIT_HOST || "127.0.0.1:1999",
+    room: workspaceId ? `inbox_${workspaceId}` : "dummy_inbox",
+    onMessage(event) {
+      try {
+        const data = JSON.parse(event.data);
+        if (
+          data.type === "conversation:status_changed" ||
+          data.type === "conversation:updated"
+        ) {
+          if (workspaceId) refreshWaitingCount(workspaceId);
+        }
+      } catch {}
+    },
+  });
+
+  // Local window event for instantaneous cross-component state synchronization (resolving, taking over)
+  useEffect(() => {
+    const handleLocalStatusChanged = () => {
+      if (workspaceId) refreshWaitingCount(workspaceId);
+    };
+    window.addEventListener("heyo:conversation_status_changed", handleLocalStatusChanged);
+    return () => {
+      window.removeEventListener("heyo:conversation_status_changed", handleLocalStatusChanged);
+    };
+  }, [workspaceId, refreshWaitingCount]);
 
   // Sync isCollapsed and operator profile from localStorage on mount
   useEffect(() => {
     try {
-      const storedCollapsed = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-      if (storedCollapsed !== null) {
-        setIsCollapsed(storedCollapsed === "true");
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        setIsCollapsed(true);
+      } else {
+        const storedCollapsed = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+        if (storedCollapsed !== null) {
+          setIsCollapsed(storedCollapsed === "true");
+        }
       }
       const storedProfile = localStorage.getItem("heyo_operator_profile");
       if (storedProfile) {
@@ -120,6 +169,8 @@ export function DashboardShell({
     const onPopState = () => {
       if (window.location.pathname.startsWith("/dashboard/inbox")) {
         setActiveTab("inbox");
+      } else if (window.location.pathname.startsWith("/dashboard/knowledge")) {
+        setActiveTab("knowledge");
       } else {
         setActiveTab("home");
       }
@@ -139,7 +190,12 @@ export function DashboardShell({
 
   const handleSelectTab = (tab: NavTab) => {
     setActiveTab(tab);
-    const targetUrl = tab === "home" ? "/dashboard" : "/dashboard/inbox";
+    const targetUrl =
+      tab === "home"
+        ? "/dashboard"
+        : tab === "inbox"
+        ? "/dashboard/inbox"
+        : "/dashboard/knowledge";
     if (typeof window !== "undefined" && window.location.pathname !== targetUrl) {
       window.history.pushState(null, "", targetUrl);
     }
@@ -280,8 +336,8 @@ export function DashboardShell({
                     <span className="block text-[10px] text-muted-foreground font-medium uppercase tracking-wider font-mono">
                       Workspace
                     </span>
-                    <span className="font-semibold text-foreground truncate block text-xs mt-0.5">
-                      Acme Support (v1)
+                    <span className="font-semibold text-foreground truncate block text-xs mt-0.5" title={workspaceName}>
+                      {workspaceName}
                     </span>
                   </div>
                 </div>
@@ -357,7 +413,7 @@ export function DashboardShell({
                   >
                     <Inbox className="h-5 w-5" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                     )}
                   </button>
                 </TooltipTrigger>
@@ -379,10 +435,56 @@ export function DashboardShell({
                   <span>Inbox</span>
                 </div>
                 {unreadCount > 0 && (
-                  <span className="flex h-5 items-center justify-center rounded-full bg-emerald-500/15 px-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="flex h-5 items-center justify-center rounded-full bg-amber-500/15 px-2 text-[10px] font-bold text-amber-700 dark:text-amber-400 border border-amber-500/25">
                     {unreadCount}
                   </span>
                 )}
+              </button>
+            )}
+
+            {/* 3. Knowledge Base */}
+            {isCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectTab("knowledge")}
+                    className={cn(
+                      "w-full h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer relative",
+                      activeTab === "knowledge"
+                        ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                    )}
+                    aria-label="Knowledge Base"
+                  >
+                    <BookOpen className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Knowledge Base & Docs</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSelectTab("knowledge")}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium active:scale-[0.98] transition-all cursor-pointer",
+                  activeTab === "knowledge"
+                    ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="h-4 w-4" />
+                  <span>Knowledge Base</span>
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] font-mono",
+                    activeTab === "knowledge" ? "text-primary-foreground/80" : "text-muted-foreground"
+                  )}
+                >
+                  Docs
+                </span>
               </button>
             )}
 
@@ -547,6 +649,14 @@ export function DashboardShell({
                   )}
                 >
                   <LiveInbox />
+                </div>
+                <div
+                  className={cn(
+                    "h-full w-full",
+                    activeTab === "knowledge" ? "block overflow-y-auto p-6 md:p-8" : "hidden"
+                  )}
+                >
+                  <KnowledgeBaseView workspaceId={workspaceId} />
                 </div>
               </>
             )}

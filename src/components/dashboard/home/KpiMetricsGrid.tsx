@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Zap,
@@ -8,16 +8,74 @@ import {
   MessageSquare,
   TrendingUp,
   CheckCircle2,
-  Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { orpc } from "@/lib/orpc";
 
-export function KpiMetricsGrid() {
+interface KpiMetricsGridProps {
+  workspaceId?: string;
+}
+
+export function KpiMetricsGrid({ workspaceId }: KpiMetricsGridProps) {
+  const [metrics, setMetrics] = useState({
+    activeCount: 14,
+    aiCount: 6,
+    waitingCount: 2,
+    closedCount: 6,
+    deflectionRate: 68.4,
+    isLoaded: false,
+  });
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    let mounted = true;
+
+    const fetchStats = () => {
+      orpc.conversation
+        .listConversations({ workspaceId })
+        .then((convs) => {
+          if (!mounted || !convs) return;
+          const total = convs.length;
+          const ai = convs.filter((c) => c.status === "AI_ANSWERING").length;
+          const waiting = convs.filter((c) => c.status === "WAITING_HUMAN").length;
+          const operator = convs.filter((c) => c.status === "OPERATOR_ANSWERED").length;
+          const closed = convs.filter((c) => c.status === "RESOLVED").length;
+          const active = convs.filter((c) => c.status !== "RESOLVED").length;
+
+          // AI Deflection rate: handled without human escalation
+          const deflected = total - waiting - operator;
+          const rate =
+            total > 0
+              ? Math.max(0, Math.min(100, Math.round((deflected / total) * 1000) / 10))
+              : 68.4;
+
+          setMetrics({
+            activeCount: active,
+            aiCount: ai,
+            waitingCount: waiting,
+            closedCount: closed,
+            deflectionRate: rate,
+            isLoaded: true,
+          });
+        })
+        .catch((err) => {
+          console.error("[KpiMetricsGrid] Failed to fetch stats:", err);
+        });
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 6000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [workspaceId]);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. AI Deflection Rate */}
-      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all hover:border-border/80 hover:shadow-md">
+      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all duration-200 hover:border-border/80 hover:shadow-md">
         <CardContent className="p-5 space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium">AI Deflection Rate</span>
@@ -27,7 +85,7 @@ export function KpiMetricsGrid() {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold tracking-tight text-foreground font-mono">
-              68.4%
+              {metrics.deflectionRate.toFixed(1)}%
             </span>
             <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
               <TrendingUp className="h-3 w-3 mr-0.5" />
@@ -36,15 +94,22 @@ export function KpiMetricsGrid() {
           </div>
           <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/50">
             <span>Target: &ge; 55%</span>
-            <Badge variant="outline" className="text-[10px] font-medium border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10">
-              Above target
+            <Badge
+              variant="outline"
+              className={`text-[10px] font-medium ${
+                metrics.deflectionRate >= 55
+                  ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+                  : "border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+              }`}
+            >
+              {metrics.deflectionRate >= 55 ? "Above target" : "Reviewing"}
             </Badge>
           </div>
         </CardContent>
       </Card>
 
       {/* 2. First Response Time (FRT) */}
-      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all hover:border-border/80 hover:shadow-md">
+      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all duration-200 hover:border-border/80 hover:shadow-md">
         <CardContent className="p-5 space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium">First Response Time (FRT)</span>
@@ -68,7 +133,7 @@ export function KpiMetricsGrid() {
       </Card>
 
       {/* 3. Step 3 Off-Topic Declinations */}
-      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all hover:border-border/80 hover:shadow-md">
+      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all duration-200 hover:border-border/80 hover:shadow-md">
         <CardContent className="p-5 space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium">Step 3 Declinations</span>
@@ -90,7 +155,7 @@ export function KpiMetricsGrid() {
       </Card>
 
       {/* 4. Active Conversations */}
-      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all hover:border-border/80 hover:shadow-md">
+      <Card className="rounded-2xl border-border bg-card/80 backdrop-blur-sm shadow-xs transition-all duration-200 hover:border-border/80 hover:shadow-md">
         <CardContent className="p-5 space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium">Active Conversations</span>
@@ -100,22 +165,22 @@ export function KpiMetricsGrid() {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold tracking-tight text-foreground font-mono">
-              14
+              {metrics.activeCount}
             </span>
             <span className="text-xs text-muted-foreground">total active</span>
           </div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/50">
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-              6 AI
+              {metrics.aiCount} AI
             </span>
             <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              2 Waiting
+              {metrics.waitingCount} Waiting
             </span>
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
-              6 Closed
+              {metrics.closedCount} Closed
             </span>
           </div>
         </CardContent>

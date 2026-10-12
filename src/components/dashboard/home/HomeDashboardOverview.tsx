@@ -48,6 +48,7 @@ export function HomeDashboardOverview({
             handoffThreshold: wsSettings.handoffThreshold ?? DEFAULT_WIDGET_SETTINGS.handoffThreshold,
             offlineEmailCapture: wsSettings.offlineEmailCapture ?? DEFAULT_WIDGET_SETTINGS.offlineEmailCapture,
             allowedDomains: wsSettings.allowedDomains ?? DEFAULT_WIDGET_SETTINGS.allowedDomains,
+            suggestedQuestions: wsSettings.suggestedQuestions ?? DEFAULT_WIDGET_SETTINGS.suggestedQuestions,
           });
         } else {
           setSettings((prev) => ({ ...prev, workspaceId: ws.id }));
@@ -91,6 +92,7 @@ export function HomeDashboardOverview({
             handoffThreshold: newSettings.handoffThreshold,
             offlineEmailCapture: newSettings.offlineEmailCapture,
             allowedDomains: newSettings.allowedDomains,
+            suggestedQuestions: newSettings.suggestedQuestions,
           },
         });
         setSaveStatus("saved");
@@ -127,7 +129,7 @@ export function HomeDashboardOverview({
       </div>
 
       {/* 2. KPI Metrics Grid */}
-      <KpiMetricsGrid />
+      <KpiMetricsGrid workspaceId={settings.workspaceId} />
 
       {/* 3. Two-Column Operational Core */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

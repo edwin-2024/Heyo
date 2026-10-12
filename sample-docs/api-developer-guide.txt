@@ -1,0 +1,37 @@
+Heyo Developer Platform - API Integration & Webhooks Reference
+
+1. Authentication & API Keys
+All API requests to the Heyo REST API must be authenticated using a Bearer token in the HTTP Authorization header:
+Authorization: Bearer hy_live_your_secret_api_key
+
+API keys can be generated and revoked inside Dashboard > Settings > API Keys. Never expose secret keys in client-side code or public repositories. Use restricted publishable keys (hy_pub_...) when configuring client widget embed scripts.
+
+2. Rate Limits
+The Heyo API enforces rate limits on a per-workspace basis:
+- Starter Tier: 60 requests per minute (burst 100)
+- Pro Tier: 300 requests per minute (burst 500)
+- Enterprise Tier: 1,200 requests per minute (burst 2,000)
+
+When you exceed the rate limit, the API returns HTTP 429 Too Many Requests with a 'Retry-After' header indicating the number of seconds to wait before retrying.
+
+3. Webhooks & Event Delivery
+Heyo delivers real-time events to your configured HTTPS webhook endpoints.
+Supported events include:
+- conversation.created: Triggered when a new visitor initiates a chat session.
+- conversation.handoff: Triggered when the AI agent transitions status to WAITING_HUMAN.
+- message.sent: Triggered on every message from a visitor, operator, or AI bot.
+- document.indexed: Triggered when an uploaded document finishes vector embedding.
+
+Webhook Signatures:
+Each webhook request contains a 'X-Heyo-Signature' header computed as an HMAC SHA-256 hash using your webhook secret key. Always verify this signature before processing incoming payloads.
+
+Webhook Retry Policy:
+If your webhook endpoint returns a non-2xx status code or times out after 10 seconds, Heyo will automatically retry with exponential backoff:
+Attempt 1: Immediate retry
+Attempt 2: 5 minutes later
+Attempt 3: 30 minutes later
+Attempt 4: 2 hours later
+After 5 consecutive failures, the webhook endpoint will be marked as degraded and an email alert will be sent to workspace operators.
+
+4. Customer Support Contact
+For developer assistance or custom API quotas, reach out to our engineering support team at dev-support@heyo.so or join our official Discord server.

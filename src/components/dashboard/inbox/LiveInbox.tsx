@@ -168,6 +168,7 @@ export function LiveInbox() {
                             : `Visitor ${vShort}`,
                         text: conv.lastMessage.text,
                         createdAt: formatRelativeTime(conv.lastMessage.createdAt),
+                        metadata: (conv.lastMessage as any)?.metadata,
                       },
                     ]
                   : [],
@@ -253,6 +254,7 @@ export function LiveInbox() {
                         senderName: lastMessage.sender === "visitor" ? `Visitor ${vShort}` : "Heyo Bot",
                         text: lastMessage.text,
                         createdAt: "Just now",
+                        metadata: (lastMessage as any)?.metadata,
                       },
                     ]
                   : [],
@@ -311,6 +313,7 @@ export function LiveInbox() {
                           : "Visitor",
                       text: msg.text,
                       createdAt: "Just now",
+                      metadata: msg.metadata,
                     },
                   ],
                 };
@@ -352,6 +355,9 @@ export function LiveInbox() {
   const filteredConversations = useMemo(() => {
     return conversations.filter((item) => {
       // 1. Tab filter
+      if (activeFilter === "all" && item.status === "CLOSED") {
+        return false;
+      }
       if (activeFilter === "waiting" && item.status !== "WAITING_HUMAN") {
         return false;
       }
@@ -454,6 +460,7 @@ export function LiveInbox() {
                       hour: "2-digit",
                       minute: "2-digit",
                     }),
+                    metadata: m.metadata as any,
                   })),
                 };
               }
@@ -537,6 +544,14 @@ export function LiveInbox() {
         })
       );
 
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("heyo:conversation_status_changed", {
+            detail: { conversationId, status: "OPERATOR_ANSWERED" },
+          })
+        );
+      }
+
       try {
         await orpc.conversation.updateStatus({
           workspaceId,
@@ -574,6 +589,14 @@ export function LiveInbox() {
           return c;
         })
       );
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("heyo:conversation_status_changed", {
+            detail: { conversationId, status: "RESOLVED" },
+          })
+        );
+      }
 
       try {
         await orpc.conversation.updateStatus({
@@ -615,6 +638,14 @@ export function LiveInbox() {
           return c;
         })
       );
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("heyo:conversation_status_changed", {
+            detail: { conversationId, status: newStatus },
+          })
+        );
+      }
 
       try {
         await orpc.conversation.updateStatus({
@@ -676,6 +707,7 @@ export function LiveInbox() {
         <ResizablePanel defaultSize={showInspector ? "47%" : "72%"} minSize="35%">
           <ActiveThread
             conversation={selectedConversation}
+            workspaceId={workspaceId}
             onSendMessage={handleSendMessage}
             onTakeOver={handleTakeOver}
             onResolve={handleResolve}

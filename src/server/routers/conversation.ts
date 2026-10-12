@@ -3,6 +3,7 @@ import { pub } from "@/server/orpc";
 import { prisma } from "@/server/db";
 import { broadcastToPartyKit } from "@/server/party";
 import { auth } from "@/lib/auth/server";
+import { processVisitorMessageAI } from "@/server/services/ai";
 
 const ConversationStatusEnum = z.enum([
   "AI_ANSWERING",
@@ -124,6 +125,17 @@ export const conversationRouter = {
           lastMessage: broadcastPayload,
         },
       });
+
+      // Trigger guardrailed RAG AI pipeline in background if conversation is in AI_ANSWERING mode
+      if (sender === "visitor" && nextStatus === "AI_ANSWERING") {
+        processVisitorMessageAI({
+          workspaceId,
+          conversationId: effectiveConvId,
+          messageText: text,
+        }).catch((err) => {
+          console.error("[AI] Error processing visitor message:", err);
+        });
+      }
 
       return broadcastPayload;
     }),

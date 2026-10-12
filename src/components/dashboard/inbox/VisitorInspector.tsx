@@ -4,6 +4,12 @@ import React from "react";
 import { Sidebar } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { VisitorAvatar } from "./VisitorAvatar";
 import { ConversationItem } from "./types";
 
@@ -19,15 +25,22 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
         <div className="h-16 px-5 border-b border-border flex items-center justify-between shrink-0">
           <h3 className="text-sm font-bold text-foreground">Details</h3>
           {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title="Close Details panel"
-            >
-              <Sidebar className="h-4 w-4" />
-            </Button>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                    aria-label="Close Details panel"
+                  >
+                    <Sidebar className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">Close Details panel</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-xs text-muted-foreground">
@@ -51,15 +64,22 @@ export function VisitorInspector({ conversation, onClose }: VisitorInspectorProp
       <div className="h-16 px-5 border-b border-border flex items-center justify-between shrink-0">
         <h3 className="text-sm font-bold text-foreground">Details</h3>
         {onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title="Close Details panel"
-          >
-            <Sidebar className="h-4 w-4" />
-          </Button>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Close Details panel"
+                >
+                  <Sidebar className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Close Details panel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 

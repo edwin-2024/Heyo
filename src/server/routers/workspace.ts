@@ -71,6 +71,7 @@ export const workspaceRouter = {
           handoffThreshold: z.number(),
           offlineEmailCapture: z.boolean(),
           allowedDomains: z.string(),
+          suggestedQuestions: z.string().nullable().optional(),
         }),
       })
     )
@@ -103,11 +104,13 @@ export const workspaceRouter = {
         update: {
           ...input.settings,
           customAvatarUrl: input.settings.customAvatarUrl ?? "",
+          suggestedQuestions: input.settings.suggestedQuestions ?? undefined,
         },
         create: {
           workspaceId: input.workspaceId,
           ...input.settings,
           customAvatarUrl: input.settings.customAvatarUrl ?? "",
+          suggestedQuestions: input.settings.suggestedQuestions ?? undefined,
         },
       });
 
@@ -124,6 +127,7 @@ export const workspaceRouter = {
           customAvatarUrl: updated.customAvatarUrl,
           welcomeMessage: updated.welcomeMessage,
           allowedDomains: updated.allowedDomains,
+          suggestedQuestions: updated.suggestedQuestions,
         },
       });
 

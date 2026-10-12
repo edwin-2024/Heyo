@@ -2,6 +2,8 @@ import "@/lib/dns-bootstrap";
 import { auth } from "@/lib/auth/server";
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const rawHandlers = auth.handler();
 
 /**

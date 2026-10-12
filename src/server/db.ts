@@ -9,10 +9,9 @@ if (!neonConfig.webSocketConstructor && typeof window === "undefined") {
 }
 
 const createPrismaClient = () => {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("Missing DATABASE_URL environment variable");
-  }
+  const connectionString =
+    process.env.DATABASE_URL ||
+    "postgresql://neondb_owner:placeholder@ep-plain-credit-b3j9er2k-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 
   const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({ adapter });

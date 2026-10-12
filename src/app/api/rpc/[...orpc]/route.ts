@@ -1,6 +1,8 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { appRouter } from "@/server/routers/app";
 
+export const dynamic = "force-dynamic";
+
 const handler = new RPCHandler(appRouter);
 
 async function handle(req: Request) {

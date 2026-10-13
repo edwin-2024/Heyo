@@ -12,6 +12,12 @@ const getBaseUrl = () => {
 
 const link = new RPCLink({
   url: `${getBaseUrl()}/api/rpc`,
+  fetch: (input, init) => {
+    return fetch(input, {
+      ...init,
+      credentials: "include",
+    });
+  },
 });
 
 export const orpc = createORPCClient<RouterClient<AppRouter>>(link);

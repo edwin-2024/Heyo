@@ -54,6 +54,7 @@ import { HomeDashboardOverview } from "@/components/dashboard/home/HomeDashboard
 import { KnowledgeBaseView } from "@/components/dashboard/knowledge/KnowledgeBaseView";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/lib/orpc";
+import { toast } from "sonner";
 
 export type NavTab = "home" | "inbox" | "knowledge";
 
@@ -69,6 +70,11 @@ interface DashboardShellProps {
       [key: string]: unknown;
     };
   } | null;
+  initialWorkspace?: {
+    id: string;
+    name: string;
+    widgetSettings?: any;
+  } | null;
 }
 
 const SIDEBAR_STORAGE_KEY = "heyo_sidebar_collapsed";
@@ -77,6 +83,7 @@ export function DashboardShell({
   children,
   initialTab = "home",
   initialSession,
+  initialWorkspace,
 }: DashboardShellProps) {
   const router = useRouter();
   const { data: clientSession, isPending } = useSession();
@@ -87,7 +94,9 @@ export function DashboardShell({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isRenameWorkspaceOpen, setIsRenameWorkspaceOpen] = useState(false);
-  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [newWorkspaceName, setNewWorkspaceName] = useState(
+    initialWorkspace?.name || ""
+  );
   const [isRenaming, setIsRenaming] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [profileOverride, setProfileOverride] = useState<{
@@ -96,8 +105,12 @@ export function DashboardShell({
   }>({});
 
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [workspaceName, setWorkspaceName] = useState<string>("My Workspace");
-  const [workspaceId, setWorkspaceId] = useState<string>("");
+  const [workspaceName, setWorkspaceName] = useState<string>(
+    initialWorkspace?.name || "My Workspace"
+  );
+  const [workspaceId, setWorkspaceId] = useState<string>(
+    initialWorkspace?.id || ""
+  );
 
   // Sync unread / waiting inbox conversation count and workspace name
   const refreshWaitingCount = useCallback((wsId: string) => {
@@ -115,15 +128,20 @@ export function DashboardShell({
 
   useEffect(() => {
     let mounted = true;
+    if (initialWorkspace?.id) {
+      refreshWaitingCount(initialWorkspace.id);
+    }
     orpc.workspace
-      .getWorkspace()
+      .getWorkspace({ workspaceId: workspaceId || initialWorkspace?.id || undefined })
       .then(async (ws) => {
         if (!mounted || !ws?.id) return;
         setWorkspaceId(ws.id);
         if (ws.name) {
           setWorkspaceName(ws.name);
+          setNewWorkspaceName(ws.name);
         } else if (ws.widgetSettings?.brandTitle) {
           setWorkspaceName(ws.widgetSettings.brandTitle);
+          setNewWorkspaceName(ws.widgetSettings.brandTitle);
         }
         refreshWaitingCount(ws.id);
       })
@@ -132,7 +150,7 @@ export function DashboardShell({
     return () => {
       mounted = false;
     };
-  }, [activeTab, refreshWaitingCount]);
+  }, [activeTab, refreshWaitingCount, initialWorkspace?.id, workspaceId]);
 
   // Connect to PartyKit Edge Room for real-time inbox alerts
   usePartySocket({
@@ -209,6 +227,7 @@ export function DashboardShell({
     setProfileOverride(updated);
     try {
       localStorage.setItem("heyo_operator_profile", JSON.stringify(updated));
+      toast.success("Profile updated");
     } catch {
       // Storage quota or restricted iframe
     }
@@ -240,13 +259,16 @@ export function DashboardShell({
     try {
       const updated = await orpc.workspace.createOrUpdateWorkspace({
         name: newWorkspaceName.trim(),
+        workspaceId: workspaceId || initialWorkspace?.id || undefined,
       });
       if (updated?.name) {
         setWorkspaceName(updated.name);
       }
+      toast.success("Workspace updated successfully");
       setIsRenameWorkspaceOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to rename workspace:", err);
+      toast.error(err?.message || "Failed to save workspace");
     } finally {
       setIsRenaming(false);
     }
@@ -267,7 +289,7 @@ export function DashboardShell({
     <TooltipProvider delayDuration={150}>
       <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans antialiased selection:bg-primary/20 selection:text-foreground">
         {/* Background subtle grain */}
-        <div className="grain dark:opacity-[0.035] opacity-[0.015]" aria-hidden="true" />
+        <div className="grain dark:opacity-[0.035] opacity-[0.015]\" aria-hidden="true" />
 
         {/* 1. Left Sidebar Navigation - Collapsible (w-64 expanded, w-[68px] collapsed) */}
         <aside
@@ -294,7 +316,7 @@ export function DashboardShell({
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
                 <svg
                   className="w-4.5 h-4.5 shrink-0 fill-current"
-                  viewBox="0 0 24 24"
+                  viewBox="24 24"
                   aria-hidden="true"
                 >
                   <g transform="rotate(-30 12 12)">
@@ -320,74 +342,69 @@ export function DashboardShell({
 
             {/* Collapse toggle button */}
             {!isCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleCollapse(true)}
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-                    aria-label="Collapse sidebar"
-                  >
-                    <PanelLeftClose className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Collapse sidebar</TooltipContent>
-              </Tooltip>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleToggleCollapse(true)}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                title="Collapse sidebar"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
             )}
           </div>
 
-          {/* Current Workspace Pill / Indicator */}
-          {isCollapsed ? (
-            <div className="py-3 flex justify-center border-b border-border/50">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleCollapse(false)}
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-                    aria-label="Expand sidebar"
-                  >
-                    <PanelLeft className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Expand sidebar</TooltipContent>
-              </Tooltip>
-            </div>
-          ) : (
-            <div className="px-3 py-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setNewWorkspaceName(workspaceName);
-                  setIsRenameWorkspaceOpen(true);
-                }}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/60 border border-border hover:border-primary/50 hover:bg-muted/80 transition-all text-xs text-left cursor-pointer group"
-                title="Click to rename workspace"
+          {/* Collapsed expand trigger */}
+          {isCollapsed && (
+            <div className="pt-2 px-2 flex justify-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleToggleCollapse(false)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                title="Expand sidebar"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                  <div className="truncate">
-                    <span className="block text-[10px] text-muted-foreground font-medium uppercase tracking-wider font-mono">
-                      Workspace
-                    </span>
-                    <span className="font-semibold text-foreground truncate block text-xs mt-0.5" title={workspaceName}>
-                      {workspaceName}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-[10px] font-mono uppercase bg-background border border-border text-muted-foreground px-1.5 py-0.5 rounded font-medium">
-                    Solo
-                  </span>
-                </div>
-              </button>
+                <PanelLeft className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
-          {/* Primary Navigation Links */}
-          <nav className={cn("flex-1 space-y-1.5 overflow-y-auto", isCollapsed ? "px-2 py-2" : "px-3 py-2")}>
-            {/* 1. Home */}
+          {/* Workspace Switcher / Name Pill */}
+          {!isCollapsed && (
+            <div className="p-3 border-b border-border/60">
+              <div className="group flex items-center justify-between p-2 rounded-xl bg-muted/40 hover:bg-muted/70 transition border border-border/50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary">
+                    <Building2 className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex flex-col">
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      {workspaceName}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono truncate">
+                      {workspaceId ? `${workspaceId.slice(0, 10)}...` : "Active"}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setNewWorkspaceName(workspaceName);
+                    setIsRenameWorkspaceOpen(true);
+                  }}
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer opacity-70 group-hover:opacity-100 transition"
+                  title="Rename Workspace"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Items */}
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            {/* 1. Home Dashboard & Widget Config */}
             {isCollapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -400,12 +417,12 @@ export function DashboardShell({
                         ? "bg-primary text-primary-foreground shadow-sm font-semibold"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
                     )}
-                    aria-label="Home Overview"
+                    aria-label="Home Dashboard & Widget Configuration"
                   >
                     <Home className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Home (Overview)</TooltipContent>
+                <TooltipContent side="right">Dashboard & Widget</TooltipContent>
               </Tooltip>
             ) : (
               <button
@@ -420,7 +437,7 @@ export function DashboardShell({
               >
                 <div className="flex items-center gap-2.5">
                   <Home className="h-4 w-4" />
-                  <span>Home</span>
+                  <span>Overview & Widget</span>
                 </div>
                 <span
                   className={cn(
@@ -428,12 +445,12 @@ export function DashboardShell({
                     activeTab === "home" ? "text-primary-foreground/80" : "text-muted-foreground"
                   )}
                 >
-                  Overview
+                  Config
                 </span>
               </button>
             )}
 
-            {/* 2. Inbox */}
+            {/* 2. Live Conversation Inbox */}
             {isCollapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -446,7 +463,7 @@ export function DashboardShell({
                         ? "bg-primary text-primary-foreground shadow-sm font-semibold"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
                     )}
-                    aria-label="Inbox"
+                    aria-label="Live Inbox"
                   >
                     <Inbox className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -548,85 +565,60 @@ export function DashboardShell({
             <div className="flex justify-center mb-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-muted/40 border border-border text-emerald-500 cursor-default">
-                    <Radio className="h-4 w-4 animate-pulse" />
-                  </div>
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 </TooltipTrigger>
-                <TooltipContent side="right">PartyKit Edge: Synced</TooltipContent>
+                <TooltipContent side="right">PartyKit Edge Synced</TooltipContent>
               </Tooltip>
             </div>
           )}
 
-          {/* Operator Profile Dropdown & Sign Out */}
-          <div className={cn("border-t border-border", isCollapsed ? "p-2" : "p-3")}>
+          {/* Operator Profile Dropdown (Bottom pinned) */}
+          <div className="p-3 border-t border-border/60">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                {isCollapsed ? (
-                  <button
-                    type="button"
-                    className="w-10 h-10 mx-auto rounded-full flex items-center justify-center bg-card border-2 border-border hover:border-primary/60 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring shadow-sm overflow-hidden"
-                    title={userName}
-                  >
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted/60 transition cursor-pointer text-left focus:outline-none",
+                    isCollapsed && "justify-center p-1"
+                  )}
+                >
+                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-xs shadow-xs overflow-hidden">
                     {userAvatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={userAvatar} alt={userName} className="h-full w-full object-cover" />
+                      <img
+                        src={userAvatar}
+                        alt={userName}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary font-mono">
-                        {isPending ? "…" : userInitials || "OP"}
-                      </div>
+                      <span>{userInitials}</span>
                     )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between gap-2 p-2 rounded-xl bg-muted/50 border border-border hover:bg-muted hover:border-border/80 transition cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground shadow-xs overflow-hidden">
-                        {userAvatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={userAvatar} alt={userName} className="h-full w-full object-cover" />
-                        ) : (
-                          isPending ? "…" : userInitials || "OP"
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-foreground truncate leading-none">
-                          {isPending ? "Loading..." : userName}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground truncate mt-1">
-                          {isPending ? "..." : userEmail}
-                        </p>
-                      </div>
+                    <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-500 border-2 border-background" />
+                  </div>
+
+                  {!isCollapsed && (
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {userName}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {userEmail}
+                      </span>
                     </div>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </button>
-                )}
+                  )}
+
+                  {!isCollapsed && <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side={isCollapsed ? "right" : "top"}
-                align={isCollapsed ? "end" : "start"}
-                className="w-56 p-1.5"
-              >
-                <DropdownMenuLabel className="font-normal px-2 py-1.5">
+
+              <DropdownMenuContent align="end" className="w-56" side="top">
+                <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-xs font-semibold leading-none">{userName}</p>
-                    <p className="text-[10px] leading-none text-muted-foreground font-mono truncate">
-                      {userEmail}
-                    </p>
+                    <p className="text-xs font-medium leading-none text-foreground">{userName}</p>
+                    <p className="text-[11px] leading-none text-muted-foreground truncate">{userEmail}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setNewWorkspaceName(workspaceName);
-                    setIsRenameWorkspaceOpen(true);
-                  }}
-                  className="cursor-pointer flex items-center gap-2 px-2 py-1.5 text-xs text-foreground hover:bg-muted focus:bg-muted rounded-lg"
-                >
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Rename Workspace</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setIsEditProfileOpen(true)}
                   className="cursor-pointer flex items-center gap-2 px-2 py-1.5 text-xs text-foreground hover:bg-muted focus:bg-muted rounded-lg"
@@ -686,7 +678,11 @@ export function DashboardShell({
                     activeTab === "home" ? "block overflow-y-auto p-6 md:p-8" : "hidden"
                   )}
                 >
-                  <HomeDashboardOverview userName={userName} />
+                  <HomeDashboardOverview
+                    userName={userName}
+                    workspaceName={workspaceName}
+                    initialWorkspace={initialWorkspace}
+                  />
                 </div>
                 <div
                   className={cn(

@@ -12,23 +12,78 @@ import { Check, Loader2 } from "lucide-react";
 interface HomeDashboardOverviewProps {
   userName?: string | null;
   workspaceName?: string;
+  initialWorkspace?: {
+    id: string;
+    name: string;
+    widgetSettings?: any;
+  } | null;
 }
 
 export function HomeDashboardOverview({
   userName = "Operator",
   workspaceName: initialWorkspaceName = "Primary Org (v1)",
+  initialWorkspace,
 }: HomeDashboardOverviewProps) {
-  const [settings, setSettings] = useState<WidgetSettings>(DEFAULT_WIDGET_SETTINGS);
-  const [workspaceName, setWorkspaceName] = useState(initialWorkspaceName);
-  const [isLoading, setIsLoading] = useState(true);
+  const [settings, setSettings] = useState<WidgetSettings>(() => {
+    if (initialWorkspace?.id) {
+      const wsSettings = initialWorkspace.widgetSettings;
+      return {
+        workspaceId: initialWorkspace.id,
+        brandTitle: wsSettings?.brandTitle ?? initialWorkspace.name ?? DEFAULT_WIDGET_SETTINGS.brandTitle,
+        botDisplayName: wsSettings?.botDisplayName ?? DEFAULT_WIDGET_SETTINGS.botDisplayName,
+        primaryColor: wsSettings?.primaryColor ?? DEFAULT_WIDGET_SETTINGS.primaryColor,
+        themeMode: (wsSettings?.themeMode as WidgetSettings["themeMode"]) ?? DEFAULT_WIDGET_SETTINGS.themeMode,
+        position: (wsSettings?.position as WidgetSettings["position"]) ?? DEFAULT_WIDGET_SETTINGS.position,
+        botAvatarType: (wsSettings?.botAvatarType as WidgetSettings["botAvatarType"]) ?? DEFAULT_WIDGET_SETTINGS.botAvatarType,
+        customAvatarUrl: wsSettings?.customAvatarUrl ?? "",
+        welcomeMessage: wsSettings?.welcomeMessage ?? DEFAULT_WIDGET_SETTINGS.welcomeMessage,
+        allowHumanEscalation: wsSettings?.allowHumanEscalation ?? DEFAULT_WIDGET_SETTINGS.allowHumanEscalation,
+        handoffThreshold: wsSettings?.handoffThreshold ?? DEFAULT_WIDGET_SETTINGS.handoffThreshold,
+        offlineEmailCapture: wsSettings?.offlineEmailCapture ?? DEFAULT_WIDGET_SETTINGS.offlineEmailCapture,
+        allowedDomains: wsSettings?.allowedDomains ?? DEFAULT_WIDGET_SETTINGS.allowedDomains,
+        suggestedQuestions: wsSettings?.suggestedQuestions ?? DEFAULT_WIDGET_SETTINGS.suggestedQuestions,
+      };
+    }
+    return DEFAULT_WIDGET_SETTINGS;
+  });
+
+  const [workspaceName, setWorkspaceName] = useState(
+    initialWorkspace?.name || initialWorkspaceName
+  );
+  const [isLoading, setIsLoading] = useState(!initialWorkspace?.id);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Load workspace and widget settings from Neon Postgres DB on mount
+  // Sync state if initialWorkspace updates
+  useEffect(() => {
+    if (initialWorkspace?.id && settings.workspaceId !== initialWorkspace.id) {
+      const wsSettings = initialWorkspace.widgetSettings;
+      setSettings({
+        workspaceId: initialWorkspace.id,
+        brandTitle: wsSettings?.brandTitle ?? initialWorkspace.name ?? DEFAULT_WIDGET_SETTINGS.brandTitle,
+        botDisplayName: wsSettings?.botDisplayName ?? DEFAULT_WIDGET_SETTINGS.botDisplayName,
+        primaryColor: wsSettings?.primaryColor ?? DEFAULT_WIDGET_SETTINGS.primaryColor,
+        themeMode: (wsSettings?.themeMode as WidgetSettings["themeMode"]) ?? DEFAULT_WIDGET_SETTINGS.themeMode,
+        position: (wsSettings?.position as WidgetSettings["position"]) ?? DEFAULT_WIDGET_SETTINGS.position,
+        botAvatarType: (wsSettings?.botAvatarType as WidgetSettings["botAvatarType"]) ?? DEFAULT_WIDGET_SETTINGS.botAvatarType,
+        customAvatarUrl: wsSettings?.customAvatarUrl ?? "",
+        welcomeMessage: wsSettings?.welcomeMessage ?? DEFAULT_WIDGET_SETTINGS.welcomeMessage,
+        allowHumanEscalation: wsSettings?.allowHumanEscalation ?? DEFAULT_WIDGET_SETTINGS.allowHumanEscalation,
+        handoffThreshold: wsSettings?.handoffThreshold ?? DEFAULT_WIDGET_SETTINGS.handoffThreshold,
+        offlineEmailCapture: wsSettings?.offlineEmailCapture ?? DEFAULT_WIDGET_SETTINGS.offlineEmailCapture,
+        allowedDomains: wsSettings?.allowedDomains ?? DEFAULT_WIDGET_SETTINGS.allowedDomains,
+        suggestedQuestions: wsSettings?.suggestedQuestions ?? DEFAULT_WIDGET_SETTINGS.suggestedQuestions,
+      });
+      setWorkspaceName(initialWorkspace.name);
+      setIsLoading(false);
+    }
+  }, [initialWorkspace, settings.workspaceId]);
+
+  // 1. Load workspace and widget settings from Neon Postgres DB on mount if needed
   useEffect(() => {
     let mounted = true;
     orpc.workspace
-      .getWorkspace()
+      .getWorkspace({ workspaceId: initialWorkspace?.id || undefined })
       .then((ws) => {
         if (!mounted || !ws) return;
         if (ws.name) setWorkspaceName(ws.name);
@@ -64,11 +119,11 @@ export function HomeDashboardOverview({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialWorkspace?.id]);
 
   // 2. Persist to Postgres with debounce
   const persistSettings = useCallback((newSettings: WidgetSettings) => {
-    if (!newSettings.workspaceId) return;
+    if (!newSettings.workspaceId || newSettings.workspaceId === "ws_live_01") return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -110,35 +165,41 @@ export function HomeDashboardOverview({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-7 pb-10">
+    <div className="space-y-8 max-w-7xl mx-auto pb-16">
       {/* 1. Top Header Banner with Save Status Indicator */}
       <div className="relative">
-        <HeaderBanner userName={userName} workspaceName={workspaceName} />
-        <div className="absolute top-4 right-4 flex items-center gap-1.5 text-xs">
+        <HeaderBanner
+          userName={userName}
+          workspaceName={workspaceName}
+        />
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
           {saveStatus === "saving" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-medium">
-              <Loader2 className="h-3 w-3 animate-spin" /> Saving to Neon DB...
-            </span>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border animate-pulse shadow-xs">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" /> Saving...
+            </div>
           )}
           {saveStatus === "saved" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium animate-in fade-in">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
               <Check className="h-3 w-3" /> Saved to Neon DB
-            </span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* 2. KPI Metrics Grid */}
-      <KpiMetricsGrid workspaceId={settings.workspaceId} />
+      {/* 2. Top-line Operator KPI Health Metrics Grid */}
+      <KpiMetricsGrid />
 
-      {/* 3. Two-Column Operational Core */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Widget Configuration & Integration (7 cols) */}
+      {/* 3. Main Dual Panel: Configuration on Left & Real-time Live Simulator on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Interactive Configuration Tabs */}
         <div className="lg:col-span-7 space-y-6">
-          <WidgetConfigPanel settings={settings} onChange={handleSettingsChange} />
+          <WidgetConfigPanel
+            settings={settings}
+            onChange={handleSettingsChange}
+          />
         </div>
 
-        {/* Right Column: Interactive Live Widget Simulator (5 cols sticky) */}
+        {/* Right Column: Sticky Live Interactive Widget Simulator */}
         <div className="lg:col-span-5 sticky top-6">
           <WidgetSimulator settings={settings} />
         </div>
